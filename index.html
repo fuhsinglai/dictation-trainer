@@ -161,6 +161,20 @@
       <h4 style="margin:0 0 10px 0;">History</h4>
       <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
     </div>
+    <div class="card">
+      <h4 style="margin:0 0 10px 0;">Learning stats</h4>
+      <div id="learningStatsPanel">
+        <div class="stats-row"><strong>7-day avg:</strong> <span id="stat7d">—</span></div>
+        <div class="stats-row muted" style="font-size:12px; margin-top:6px;">By article & section:</div>
+        <div id="statByArticleSection" class="muted" style="font-size:11px; max-height:120px; overflow-y:auto;"></div>
+        <div class="muted" style="font-size:11px; margin-top:8px;">Trend (last 30 checks):</div>
+        <canvas id="trendChart" width="220" height="80" style="display:block; margin-top:4px; background:#f9f9f9; border-radius:6px;"></canvas>
+        <div style="margin-top:10px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+          <label class="muted" style="font-size:12px;"><input type="checkbox" id="noRecordTest" title="Check to skip saving scores (for testing)" /> Don't record (test)</label>
+          <button type="button" id="clearScores" class="muted" style="font-size:12px;">Clear records</button>
+        </div>
+      </div>
+    </div>
   </aside>
   </div>
 
@@ -351,6 +365,21 @@
   let articleList = [];  // from articles.json or uploaded JSON
   const stats = { total:0, sumAcc:0, wrongWords:{} };
   const checkHistory = [];  // { sentenceNum, totalSentences, accPct, diffHtml, tip }
+  let currentArticleId = "";  // set when loading from dropdown
+  let playReplayCountForCurrentSentence = 0;
+
+  // ---------- Score persistence (localStorage) ----------
+  const SCORES_KEY = "dictationTrainer_scores";
+  const MAX_SCORES = 5000;
+  function getScores() {
+    try { const raw = localStorage.getItem(SCORES_KEY); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
+  }
+  function saveScore(record) {
+    const arr = getScores();
+    arr.push(record);
+    if (arr.length > MAX_SCORES) arr.splice(0, arr.length - MAX_SCORES);
+    localStorage.setItem(SCORES_KEY, JSON.stringify(arr));
+  }
 
   function renderSidebar() {
     document.getElementById("statCount").textContent = stats.total;
@@ -382,6 +411,49 @@
         </div>
       </div>`;
     }).join("");
+  }
+
+  function renderLearningStats() {
+    const scores = getScores();
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const last7 = scores.filter(r => new Date(r.ts).getTime() >= sevenDaysAgo);
+    const avg7 = last7.length ? Math.round(last7.reduce((s, r) => s + r.accuracy, 0) / last7.length) : null;
+    document.getElementById("stat7d").textContent = avg7 !== null ? avg7 + "%" : "—";
+
+    const byKey = {};
+    scores.forEach(r => {
+      const key = (r.articleId || "(pasted)") + "\t" + (r.sectionIndex ?? 0);
+      if (!byKey[key]) byKey[key] = [];
+      byKey[key].push(r.accuracy);
+    });
+    const lines = Object.entries(byKey).map(([key, accs]) => {
+      const [aid, sec] = key.split("\t");
+      const avg = Math.round(accs.reduce((a, b) => a + b, 0) / accs.length);
+      const title = (articleList.find(a => a.id === aid) || {}).title || aid;
+      return title + " §" + (parseInt(sec, 10) + 1) + ": " + avg + "%";
+    }).sort().slice(0, 15);
+    document.getElementById("statByArticleSection").textContent = lines.length ? lines.join("\n") : "—";
+
+    const last30 = scores.slice(-30);
+    const canvas = document.getElementById("trendChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if (last30.length < 2) return;
+    ctx.strokeStyle = "#2a7";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const pad = 4;
+    const x0 = pad, x1 = w - pad, y0 = pad, y1 = h - pad;
+    last30.forEach((r, i) => {
+      const x = x0 + (i / (last30.length - 1)) * (x1 - x0);
+      const y = y1 - (r.accuracy / 100) * (y1 - y0);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
   }
 
   function currentSentence() { return sentences[idx] || ""; }
@@ -529,6 +601,10 @@
     idx = 0;
     stats.total = 0; stats.sumAcc = 0; stats.wrongWords = {};
     checkHistory.length = 0;
+    playReplayCountForCurrentSentence = 0;
+    const sel = document.getElementById("articleSelect").value;
+    const art = (sel !== "" && articleList[parseInt(sel, 10)]) ? articleList[parseInt(sel, 10)] : null;
+    currentArticleId = art ? (art.id || "") : "";
     renderSidebar();
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
@@ -603,6 +679,7 @@
   document.getElementById("txtFile").onchange = (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
+    document.getElementById("articleSelect").value = "";
     const reader = new FileReader();
     reader.onload = () => {
       document.getElementById("article").value = reader.result;
@@ -621,6 +698,8 @@
     stats.sumAcc = 0;
     stats.wrongWords = {};
     checkHistory.length = 0;
+    currentArticleId = "";
+    playReplayCountForCurrentSentence = 0;
     renderSidebar();
     document.getElementById("articleSelect").value = "";
     fillSectionDropdown();
@@ -656,6 +735,7 @@
   document.getElementById("prev").onclick = () => {
     if (!sentences.length) return;
     idx = Math.max(0, idx-1);
+    playReplayCountForCurrentSentence = 0;
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     renderSentence();
@@ -664,6 +744,7 @@
   document.getElementById("next").onclick = () => {
     if (!sentences.length) return;
     idx = Math.min(sentences.length-1, idx+1);
+    playReplayCountForCurrentSentence = 0;
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     renderSentence();
@@ -671,12 +752,13 @@
 
   document.getElementById("play").onclick = () => {
     const s = currentSentence();
+    if (s) playReplayCountForCurrentSentence++;
     speak(s);
   };
   document.getElementById("playSection").onclick = playEntireSection;
   function playAgain() {
     const s = currentSentence();
-    if (s) speak(s);
+    if (s) { playReplayCountForCurrentSentence++; speak(s); }
   }
   document.getElementById("again").onclick = playAgain;
 
@@ -685,7 +767,7 @@
     if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); document.getElementById("check").click(); return; }
     if (!e.altKey) return;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); playAgain(); return; }
-    if (e.key === "p" || e.key === "P") { e.preventDefault(); var s = currentSentence(); if (s) speak(s); return; }
+    if (e.key === "p" || e.key === "P") { e.preventDefault(); var s = currentSentence(); if (s) { playReplayCountForCurrentSentence++; speak(s); } return; }
     if (e.key === "ArrowLeft") { e.preventDefault(); document.getElementById("prev").click(); return; }
     if (e.key === "ArrowRight") { e.preventDefault(); document.getElementById("next").click(); return; }
   });
@@ -764,7 +846,22 @@
       diffHtml,
       tip: tipText
     });
+
+    const secIdx = sectionIndex[idx];
+    if (!document.getElementById("noRecordTest").checked) {
+      saveScore({
+        ts: new Date().toISOString(),
+        articleId: currentArticleId,
+        sectionIndex: secIdx !== undefined ? secIdx : 0,
+        sentenceIndex: idx,
+        accuracy: accPct,
+        replayCount: playReplayCountForCurrentSentence
+      });
+    }
+    playReplayCountForCurrentSentence = 0;
+
     renderSidebar();
+    renderLearningStats();
 
     // render result card
 
@@ -791,10 +888,18 @@
     document.getElementById("cardArticle").classList.toggle("collapsed");
   });
 
+  document.getElementById("clearScores").onclick = () => {
+    if (confirm("Clear all saved score records? This cannot be undone.")) {
+      localStorage.removeItem(SCORES_KEY);
+      renderLearningStats();
+    }
+  };
+
   // initial
   loadVoices();
   renderSentence();
   updateDictationControls();
+  renderLearningStats();
 </script>
 </body>
 </html>
