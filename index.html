@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>English Dictation Trainer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    textarea, input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+    textarea { min-height: 120px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    button, select { padding: 8px 14px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; background: #f8f8f8; cursor: pointer; transition: background .15s, border-color .15s; }
+    button:hover, select:hover { background: #eee; border-color: #bbb; }
+    button:active { background: #e0e0e0; }
+    button:disabled, select:disabled { opacity: 0.6; cursor: not-allowed; }
+    select { cursor: pointer; }
+    .card { border: 1px solid #e0e0e0; border-radius: 12px; padding: 14px; margin-top: 14px; background: #fff; }
+    .muted { color: #666; font-size: 13px; }
+    .hiddenText { background: #000; color: #000; border-radius: 8px; padding: 10px; user-select: none; }
+    .playback-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; background: #f5f5f5; border-radius: 10px; border: 1px solid #eee; }
+    .playback-group button { margin: 0; }
+    .diff span.ok { }
+    .diff span.ins { background: #ffe0e0; }
+    .diff span.del { background: #e0f0ff; text-decoration: line-through; }
+    .diff span.sub { background: #fff2cc; }
+    .badge { display:inline-block; padding: 4px 10px; border: 1px solid #ddd; border-radius: 999px; margin-left: 8px; font-size: 12px; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <h1>English Dictation Trainer</h1>
+  <p class="muted">
+    Uses browser built-in TTS (speechSynthesis). Best on Chrome/Edge. Paste an article, then practice one sentence at a time.
+  </p>
+
+  <div class="card">
+    <h3>1) Paste or load article</h3>
+    <div class="row" style="margin-bottom:8px; align-items:center;">
+      <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
+        <span style="min-width:6.5em; text-align:right;">Select article</span>
+        <select id="articleSelect" style="min-width:200px;">
+          <option value="">— Select or paste below —</option>
+        </select>
+      </label>
+      <button type="button" id="loadSelected">Load</button>
+      <span class="muted" style="font-size:12px;">or</span>
+      <label class="muted" style="cursor:pointer;">
+        <input type="file" id="txtFile" accept=".txt" style="display:none;" />
+        <button type="button" id="pickTxt">Select .txt file</button>
+      </label>
+      <a href="upload.html" class="muted" style="font-size:13px;">Upload materials</a>
+    </div>
+    <div class="row" style="margin-bottom:8px; align-items:center;" id="chapterRow">
+      <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
+        <span style="min-width:6.5em; text-align:right;">Section</span>
+        <select id="sectionSelect" style="min-width:200px;">
+          <option value="">— Load article first —</option>
+        </select>
+      </label>
+    </div>
+    <textarea id="article" placeholder="Or paste English article here..."></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button id="load">Load & Split Sentences</button>
+      <button type="button" id="downloadCleaned" class="muted" style="font-size:13px;">Download cleaned text</button>
+      <button type="button" id="clearContent" class="muted" style="font-size:13px;">Clear content</button>
+      <label class="muted"><input type="checkbox" id="strict" /> Strict mode</label>
+      <label class="muted"><input type="checkbox" id="hideText" checked /> Hide sentence (anti-peek)</label>
+    </div>
+    <p class="muted" style="margin-top:6px; font-size:12px;">Notion formatting is auto-cleaned; you can overwrite .txt in materials after download.</p>
+  </div>
+
+  <div class="card">
+    <h3>2) Dictation</h3>
+    <div class="row" style="align-items: center;">
+      <div class="playback-group">
+        <button id="prev" title="Alt + ← ">◀ Prev</button>
+        <button id="play" title="Alt + P ">🔊 Play</button>
+        <button id="again" title="Alt + R ">🔁 Replay</button>
+        <button id="next" title="Alt + → ">Next ▶</button>
+      </div>
+
+      <label class="muted">Speed
+        <select id="rate">
+            <option value="0.7">Very Slow</option>
+            <option value="0.85">Slow</option>
+            <option value="1">Normal</option>
+            <option value="1.15">Fast</option>
+            <option value="1.3">Very Fast</option>
+            <option value="1.5">Extremely Fast</option>
+        </select>
+      </label>
+
+      <label class="muted">Voice
+        <select id="voice"></select>
+      </label>
+      <span class="badge" id="idxBadge">Sentence 0 / 0</span>
+      <button type="button" id="playSection" title="Play entire current section">▶ Play section</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <div class="row" style="align-items:center;">
+        <span class="muted">Sentence (may be hidden):</span>
+        <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-left:8px;">Show section</button>
+      </div>
+      <div id="sentenceBox" class="card" style="margin-top:6px;"></div>
+      <div id="chapterTextBox" class="card muted" style="margin-top:6px; display:none; white-space:pre-wrap; max-height:200px; overflow:auto;"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <div class="muted">Type what you heard:</div>
+      <textarea id="input" placeholder="Type your dictation here..."></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button id="check">✅ Check</button>
+        <button id="reveal">👁 Reveal Answer</button>
+        <button id="clear">🧹 Clear Input</button>
+      </div>
+    </div>
+
+    <div id="result" class="card" style="display:none;"></div>
+  </div>
+
+<script>
+  // ---------- Sentence splitting (simple but decent) ----------
+  function splitSentences(text) {
+    const cleaned = text.replace(/\s+/g, " ").trim();
+    if (!cleaned) return [];
+    // Split on . ! ? followed by space + uppercase/quote, keep punctuation.
+    const parts = cleaned.split(/(?<=[.!?])\s+(?=[A-Z“"‘'])/g);
+    return parts.map(s => s.trim()).filter(Boolean);
+  }
+
+  // ---------- Normalization ----------
+  function normalize(s, strict) {
+    let t = s.trim();
+    if (!strict) {
+      t = t.toLowerCase();
+      t = t.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+      t = t.replace(/[^\w\s']/g, " "); // remove punctuation (keep apostrophes)
+      t = t.replace(/\s+/g, " ").trim();
+    } else {
+      t = t.replace(/\s+/g, " ").trim();
+    }
+    return t;
+  }
+
+  function tokenize(s, strict) {
+    const t = normalize(s, strict);
+    if (!t) return [];
+    if (strict) {
+      // strict: tokenization by spaces (keeps punctuation attached)
+      return t.split(" ");
+    }
+    // non-strict: word tokens
+    return t.split(" ");
+  }
+
+  // ---------- Diff (LCS-based) ----------
+  function diffTokens(refTokens, hypTokens) {
+    const n = refTokens.length, m = hypTokens.length;
+    const dp = Array.from({length:n+1}, () => Array(m+1).fill(0));
+    for (let i=1;i<=n;i++){
+      for (let j=1;j<=m;j++){
+        dp[i][j] = (refTokens[i-1]===hypTokens[j-1])
+          ? dp[i-1][j-1] + 1
+          : Math.max(dp[i-1][j], dp[i][j-1]);
+      }
+    }
+    // backtrack
+    let i=n, j=m;
+    const ops = [];
+    while (i>0 && j>0) {
+      if (refTokens[i-1]===hypTokens[j-1]) {
+        ops.push({type:"ok", tok: refTokens[i-1]});
+        i--; j--;
+      } else if (dp[i-1][j] >= dp[i][j-1]) {
+        ops.push({type:"del", tok: refTokens[i-1]}); // missing
+        i--;
+      } else {
+        ops.push({type:"ins", tok: hypTokens[j-1]}); // extra
+        j--;
+      }
+    }
+    while (i>0) { ops.push({type:"del", tok: refTokens[i-1]}); i--; }
+    while (j>0) { ops.push({type:"ins", tok: hypTokens[j-1]}); j--; }
+    ops.reverse();
+
+    // Count errors
+    let del=0, ins=0, ok=0;
+    for (const op of ops) {
+      if (op.type==="ok") ok++;
+      else if (op.type==="del") del++;
+      else if (op.type==="ins") ins++;
+    }
+    // substitution approximation: pair an ins next to del as sub for display
+    const pretty = [];
+    for (let k=0; k<ops.length; k++){
+      const cur = ops[k], nxt = ops[k+1];
+      if (cur?.type==="del" && nxt?.type==="ins") {
+        pretty.push({type:"sub", a: cur.tok, b: nxt.tok});
+        k++;
+      } else {
+        pretty.push(cur);
+      }
+    }
+    return {ops, pretty, counts:{del,ins,ok}, refLen:n};
+  }
+
+  function accuracyFromCounts(refLen, del, ins) {
+    // simple: accuracy = 1 - (del+ins)/refLen (clamp 0..1)
+    if (refLen===0) return 0;
+    const err = del + ins;
+    return Math.max(0, Math.min(1, 1 - err/refLen));
+  }
+
+  // ---------- TTS ----------
+  let voices = [];
+  function loadVoices() {
+    const allVoices = speechSynthesis.getVoices();
+    // English voices only (lang starts with "en", e.g. en-US, en-GB, en-AU)
+    voices = allVoices.filter(v => v.lang.startsWith("en"));
+    const sel = document.getElementById("voice");
+    sel.innerHTML = "";
+    const sorted = voices.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    const defaultPreferred = "Microsoft Ava Online (Natural) - English (United States) (en-US)";
+    sorted.forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v.name;
+      opt.textContent = `${v.name} (${v.lang})`;
+      sel.appendChild(opt);
+    });
+    const saved = localStorage.getItem("dictationTrainer_voice");
+    const useSaved = saved && sorted.some(v => v.name === saved);
+    if (useSaved) sel.value = saved;
+    else {
+      const preferred = sorted.find(v => v.name === defaultPreferred || (v.name.includes("Ava") && v.lang === "en-US"));
+      if (preferred) sel.value = preferred.name;
+      else if (sorted.length) sel.value = sorted[0].name;
+    }
+  }
+  speechSynthesis.onvoiceschanged = loadVoices;
+  document.getElementById("voice").addEventListener("change", function() {
+    localStorage.setItem("dictationTrainer_voice", this.value);
+  });
+  document.getElementById("rate").addEventListener("change", function() {
+    localStorage.setItem("dictationTrainer_speed", this.value);
+  });
+  var savedSpeed = localStorage.getItem("dictationTrainer_speed");
+  if (savedSpeed && document.querySelector("#rate option[value=\"" + savedSpeed + "\"]")) {
+    document.getElementById("rate").value = savedSpeed;
+  }
+
+  function speak(text) {
+    if (!text) return;
+    speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    const rate = parseFloat(document.getElementById("rate").value || "1");
+    utt.rate = rate;
+    const voiceName = document.getElementById("voice").value;
+    const v = voices.find(x => x.name === voiceName);
+    if (v) utt.voice = v;
+    speechSynthesis.speak(utt);
+  }
+
+  let sectionPlaying = false;
+  function setPlaySectionButtonLabel(playing) {
+    var btn = document.getElementById("playSection");
+    if (!btn) return;
+    sectionPlaying = playing;
+    btn.textContent = playing ? "Stop" : "Play section";
+    btn.title = playing ? "Stop section playback" : "Play entire current section";
+  }
+  function playEntireSection() {
+    if (sectionPlaying) {
+      speechSynthesis.cancel();
+      setPlaySectionButtonLabel(false);
+      return;
+    }
+    if (!sentences.length || sectionIndex[idx] === undefined) return;
+    speechSynthesis.cancel();
+    const sec = sectionIndex[idx];
+    const list = sentences.filter((_, i) => sectionIndex[i] === sec);
+    if (!list.length) return;
+    setPlaySectionButtonLabel(true);
+    const rate = parseFloat(document.getElementById("rate").value || "1");
+    const voiceName = document.getElementById("voice").value;
+    const voice = voices.find(x => x.name === voiceName);
+    let i = 0;
+    function speakNext() {
+      if (i >= list.length) {
+        setPlaySectionButtonLabel(false);
+        return;
+      }
+      const utt = new SpeechSynthesisUtterance(list[i]);
+      utt.rate = rate;
+      if (voice) utt.voice = voice;
+      utt.onend = () => { i++; speakNext(); };
+      speechSynthesis.speak(utt);
+    }
+    speakNext();
+  }
+
+  // ---------- App state ----------
+  let sentences = [];
+  let sectionIndex = [];  // which section each sentence belongs to (0-based), split by blank lines
+  let idx = 0;
+  let articleList = [];  // from articles.json or uploaded JSON
+  const stats = { total:0, sumAcc:0, wrongWords:{} };
+
+  function currentSentence() { return sentences[idx] || ""; }
+
+  function fillSectionDropdown() {
+    const sel = document.getElementById("sectionSelect");
+    const row = document.getElementById("chapterRow");
+    const numSections = sectionIndex.length ? Math.max(...sectionIndex) + 1 : 0;
+    sel.innerHTML = "";
+    if (numSections === 0) {
+      sel.appendChild(new Option("— Load article first —", ""));
+      row.style.display = "";
+      return;
+    }
+    row.style.display = "";
+    const chNames = ["Section 1", "Section 2", "Section 3", "Section 4", "Section 5", "Section 6", "Section 7", "Section 8", "Section 9", "Section 10"];
+    for (let i = 0; i < numSections; i++) {
+      const name = chNames[i] || `Section ${i + 1}`;
+      sel.appendChild(new Option(name, String(i)));
+    }
+    sel.value = sectionIndex[idx] !== undefined ? String(sectionIndex[idx]) : "0";
+  }
+
+  function updateDictationControls() {
+    const on = sentences.length > 0;
+    if (!on) {
+      if (sectionPlaying) { speechSynthesis.cancel(); setPlaySectionButtonLabel(false); }
+    }
+    ["prev", "play", "again", "next", "playSection", "check", "reveal", "clear", "toggleChapterText", "sectionSelect"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = !on;
+    });
+    if (!on) setPlaySectionButtonLabel(false);
+  }
+
+  function renderSentence() {
+    const hide = document.getElementById("hideText").checked;
+    const box = document.getElementById("sentenceBox");
+    const s = currentSentence();
+    box.className = "card";
+    box.textContent = s ? s : "(No sentences loaded)";
+    if (hide && s) box.classList.add("hiddenText");
+    const total = sentences.length;
+    const sec = sectionIndex[idx];
+    const sectionSelect = document.getElementById("sectionSelect");
+    if (sectionSelect.options.length > 1 && sec !== undefined) sectionSelect.value = String(sec);
+    document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total}` : `Sentence 0 / 0`;
+  }
+
+  function applySavedSection() {
+    var saved = localStorage.getItem("dictationTrainer_section");
+    if (saved === null || !sectionIndex.length) return;
+    var sec = parseInt(saved, 10);
+    if (isNaN(sec) || sec < 0 || sec > Math.max(...sectionIndex)) return;
+    var firstIdx = sectionIndex.indexOf(sec);
+    if (firstIdx < 0) return;
+    idx = firstIdx;
+    var sel = document.getElementById("sectionSelect");
+    if (sel.options.length > 1) sel.value = saved;
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    renderSentence();
+  }
+
+  document.getElementById("sectionSelect").onchange = () => {
+    const v = document.getElementById("sectionSelect").value;
+    if (v === "") return;
+    localStorage.setItem("dictationTrainer_section", v);
+    const sec = parseInt(v, 10);
+    if (isNaN(sec)) return;
+    const firstIdx = sectionIndex.indexOf(sec);
+    if (firstIdx < 0) return;
+    idx = firstIdx;
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    renderSentence();
+    var panel = document.getElementById("chapterTextBox");
+    if (panel.style.display === "block") {
+      var chapterSentences = sentences.filter(function(_, i) { return sectionIndex[i] === sec; });
+      panel.textContent = chapterSentences.join(" ");
+    }
+  };
+
+  function progressReport() {
+    if (stats.total === 0) return "";
+    const avg = Math.round((stats.sumAcc / stats.total) * 100);
+    const topWrong = Object.entries(stats.wrongWords)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,5)
+      .map(([w,c])=>`${w} (${c})`)
+      .join(", ") || "None";
+    return `
+      <div style="border-top:1px solid #eee; margin-top:12px; padding-top:12px;">
+        <h4>Progress Report</h4>
+        <div>Completed: ${stats.total}</div>
+        <div>Average accuracy: ${avg}%</div>
+        <div>Most common wrong words: ${topWrong}</div>
+      </div>
+    `;
+  }
+
+  // ---------- Article list from JSON ----------
+  function fillArticleDropdown() {
+    const sel = document.getElementById("articleSelect");
+    sel.innerHTML = '<option value="">— Select or paste below —</option>';
+    articleList.forEach((a, i) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = a.title || a.id || `Article ${i + 1}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Clean Notion paste format for TTS and sentence splitting
+  function cleanNotionText(text) {
+    return text
+      .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/^#+\s*/gm, "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/_([^_]*)_/g, "$1")
+      .replace(/__/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Split by blank lines into sections, then split each section into sentences
+  function splitIntoSectionedSentences(rawText) {
+    const paragraphs = rawText.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+    if (paragraphs.length === 0) return { sentences: [], sectionIndex: [] };
+    const sections = paragraphs.map(p => splitSentences(cleanNotionText(p)));
+    const sentences = sections.flat();
+    const sectionIndex = sections.flatMap((sents, i) => sents.map(() => i));
+    return { sentences, sectionIndex };
+  }
+
+  function loadArticleAndSplit() {
+    const raw = document.getElementById("article").value;
+    const { sentences: s, sectionIndex: si } = splitIntoSectionedSentences(raw);
+    sentences.length = 0;
+    sentences.push(...s);
+    sectionIndex.length = 0;
+    sectionIndex.push(...si);
+    idx = 0;
+    stats.total = 0; stats.sumAcc = 0; stats.wrongWords = {};
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    fillSectionDropdown();
+    renderSentence();
+    loadVoices();
+    updateDictationControls();
+  }
+
+  // Load articles.json from same directory (use a local server e.g. Live Server)
+  fetch("articles.json")
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      if (Array.isArray(data.articles)) articleList = data.articles;
+      else if (data.articles) articleList = data.articles;
+      fillArticleDropdown();
+      var savedArticle = localStorage.getItem("dictationTrainer_article");
+      if (savedArticle !== null && savedArticle !== "" && articleList[parseInt(savedArticle, 10)]) {
+        document.getElementById("articleSelect").value = savedArticle;
+        loadSelectedArticle(true);
+      }
+    })
+    .catch(() => {});
+
+  function loadSelectedArticle(restoreSection) {
+    const i = document.getElementById("articleSelect").value;
+    if (i === "") { alert("Please select an article from the dropdown first."); return; }
+    const a = articleList[parseInt(i, 10)];
+    if (!a) { alert("Article not found."); return; }
+    if (a.content) {
+      document.getElementById("article").value = a.content;
+      loadArticleAndSplit();
+      localStorage.setItem("dictationTrainer_article", i);
+      if (restoreSection) applySavedSection();
+      return;
+    }
+    if (a.file) {
+      var btn = document.getElementById("loadSelected");
+      var origText = btn.textContent;
+      btn.textContent = "Loading…";
+      btn.disabled = true;
+      var wantRestoreSection = !!restoreSection;
+      fetch(a.file)
+        .then(r => {
+          if (!r.ok) throw new Error("HTTP " + r.status + "：" + a.file);
+          return r.text();
+        })
+        .then(raw => {
+          if (!raw || raw.trim().length < 20) {
+            alert("Loaded content is empty or too short. Use \"Select .txt file\" to pick " + a.file.split("/").pop() + " from materials.");
+            return;
+          }
+          document.getElementById("article").value = raw;
+          loadArticleAndSplit();
+          localStorage.setItem("dictationTrainer_article", document.getElementById("articleSelect").value);
+          if (wantRestoreSection) applySavedSection();
+        })
+        .catch(err => {
+          alert("Could not load \"" + a.file + "\"\n\n" + (err.message || err) + "\n\nUse \"Select .txt file\" to pick a .txt from the materials folder.");
+        })
+        .finally(function () {
+          btn.textContent = origText;
+          btn.disabled = false;
+        });
+    }
+  }
+
+  document.getElementById("articleSelect").onchange = loadSelectedArticle;
+  document.getElementById("loadSelected").onclick = loadSelectedArticle;
+
+  document.getElementById("pickTxt").onclick = () => document.getElementById("txtFile").click();
+  document.getElementById("txtFile").onchange = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      document.getElementById("article").value = reader.result;
+      loadArticleAndSplit();
+      e.target.value = "";
+    };
+    reader.readAsText(f, "utf-8");
+  };
+
+  document.getElementById("clearContent").onclick = () => {
+    document.getElementById("article").value = "";
+    sentences.length = 0;
+    sectionIndex.length = 0;
+    idx = 0;
+    stats.total = 0;
+    stats.sumAcc = 0;
+    stats.wrongWords = {};
+    document.getElementById("articleSelect").value = "";
+    fillSectionDropdown();
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    var panel = document.getElementById("chapterTextBox");
+    if (panel.style.display === "block") {
+      panel.style.display = "none";
+      document.getElementById("toggleChapterText").textContent = "Show section";
+    }
+    renderSentence();
+    updateDictationControls();
+  };
+
+  document.getElementById("downloadCleaned").onclick = () => {
+    const raw = document.getElementById("article").value;
+    if (!raw.trim()) { alert("Please paste or load an article first."); return; }
+    const cleaned = cleanNotionText(raw);
+    const name = (document.getElementById("articleSelect").selectedOptions[0] && document.getElementById("articleSelect").selectedOptions[0].text)
+      ? document.getElementById("articleSelect").selectedOptions[0].text.replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").slice(0, 40) || "cleaned"
+      : "cleaned";
+    const blob = new Blob([cleaned], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name + ".txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ---------- UI handlers ----------
+  document.getElementById("load").onclick = loadArticleAndSplit;
+
+  document.getElementById("prev").onclick = () => {
+    if (!sentences.length) return;
+    idx = Math.max(0, idx-1);
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    renderSentence();
+  };
+
+  document.getElementById("next").onclick = () => {
+    if (!sentences.length) return;
+    idx = Math.min(sentences.length-1, idx+1);
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    renderSentence();
+  };
+
+  document.getElementById("play").onclick = () => {
+    const s = currentSentence();
+    speak(s);
+  };
+  document.getElementById("playSection").onclick = playEntireSection;
+  function playAgain() {
+    const s = currentSentence();
+    if (s) speak(s);
+  }
+  document.getElementById("again").onclick = playAgain;
+
+  // Playback hotkeys (work while typing in textarea)
+  document.addEventListener("keydown", (e) => {
+    if (!e.altKey) return;
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); playAgain(); return; }
+    if (e.key === "p" || e.key === "P") { e.preventDefault(); var s = currentSentence(); if (s) speak(s); return; }
+    if (e.key === "ArrowLeft") { e.preventDefault(); document.getElementById("prev").click(); return; }
+    if (e.key === "ArrowRight") { e.preventDefault(); document.getElementById("next").click(); return; }
+  });
+
+  document.getElementById("reveal").onclick = () => {
+    const box = document.getElementById("sentenceBox");
+    box.classList.remove("hiddenText");
+  };
+
+  document.getElementById("toggleChapterText").onclick = () => {
+    const panel = document.getElementById("chapterTextBox");
+    const btn = document.getElementById("toggleChapterText");
+    if (panel.style.display === "block") {
+      panel.style.display = "none";
+      panel.textContent = "";
+      btn.textContent = "Show section";
+      return;
+    }
+    if (!sentences.length || sectionIndex[idx] === undefined) return;
+    const sec = sectionIndex[idx];
+    const chapterSentences = sentences.filter((_, i) => sectionIndex[i] === sec);
+    panel.textContent = chapterSentences.join(" ");
+    panel.style.display = "block";
+    btn.textContent = "Hide section";
+  };
+
+  document.getElementById("clear").onclick = () => {
+    document.getElementById("input").value = "";
+  };
+
+  document.getElementById("check").onclick = () => {
+    const strict = document.getElementById("strict").checked;
+    const ref = currentSentence();
+    const hyp = document.getElementById("input").value;
+
+    const refTok = tokenize(ref, strict);
+    const hypTok = tokenize(hyp, strict);
+    const d = diffTokens(refTok, hypTok);
+    const acc = accuracyFromCounts(d.refLen, d.counts.del, d.counts.ins);
+    const accPct = Math.round(acc*100);
+
+    // track wrong words (from substitutions + deletions)
+    d.pretty.forEach(op => {
+      if (op.type==="sub") {
+        stats.wrongWords[op.b] = (stats.wrongWords[op.b]||0) + 1;
+      } else if (op.type==="del") {
+        stats.wrongWords[op.tok] = (stats.wrongWords[op.tok]||0) + 1;
+      }
+    });
+
+    stats.total += 1;
+    stats.sumAcc += acc;
+
+    // render diff
+    const diffHtml = d.pretty.map(op => {
+      if (op.type==="ok") return `<span class="ok">${op.tok}</span>`;
+      if (op.type==="del") return `<span class="del">${op.tok}</span>`;
+      if (op.type==="ins") return `<span class="ins">${op.tok}</span>`;
+      if (op.type==="sub") return `<span class="sub">${op.a} → ${op.b}</span>`;
+      return "";
+    }).join(" ");
+
+    const tips = [];
+    if (d.counts.del > 0) tips.push("You missed some words—watch small function words (a/the/to/of).");
+    if (d.counts.ins > 0) tips.push("You added extra words—slow down and follow the sentence structure.");
+    if (tips.length === 0) tips.push("Great accuracy—try Fast mode next.");
+
+    const res = document.getElementById("result");
+    res.style.display = "block";
+    res.innerHTML = `
+      <h4>Result</h4>
+      <div><b>Accuracy:</b> ${accPct}%</div>
+      <div class="muted">Blue = missing, Red = extra, Yellow = substitution</div>
+      <div class="diff" style="margin-top:10px; line-height:1.8;">${diffHtml}</div>
+      <div style="margin-top:10px;"><b>Tip:</b> ${tips[0]}${tips[1] ? " " + tips[1] : ""}</div>
+      ${(stats.total % 5 === 0) ? progressReport() : ""}
+    `;
+  };
+
+  // initial
+  loadVoices();
+  renderSentence();
+  updateDictationControls();
+</script>
+</body>
+</html>

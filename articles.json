@@ -1,0 +1,28 @@
+{
+  "articles": [
+    {
+      "id": "sample",
+      "title": "Sample Article",
+      "file": "materials/sample.txt",
+      "style": "conversation",
+      "difficulty": 2,
+      "tags": ["anime", "narrative"]
+    },
+    {
+      "id": "ippo",
+      "title": "LPPO (Ippo 故事)",
+      "file": "materials/lppo.txt",
+      "style": "conversation",
+      "difficulty": 2,
+      "tags": ["anime", "narrative"]
+    },
+    {
+      "id": "chihiro",
+      "title": "Chihiro",
+      "file": "materials/Chihiro.txt",
+      "style": "conversation",
+      "difficulty": 2,
+      "tags": ["anime", "narrative"]
+    }
+  ]
+}
