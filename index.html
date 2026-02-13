@@ -6,7 +6,32 @@
   <title>English Dictation Trainer</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; padding: 0 16px; }
+    .app-layout { display: flex; gap: 24px; max-width: 1200px; margin: 24px auto; align-items: flex-start; }
+    .main { flex: 1; min-width: 0; max-width: 900px; }
+    .sidebar { width: 260px; flex-shrink: 0; position: sticky; top: 24px; }
+    .sidebar .card { margin-top: 10px; }
+    .card-collapsible .card-head { cursor: pointer; user-select: none; margin: 0; padding: 2px 0 10px 0; display: flex; align-items: center; justify-content: space-between; }
+    .card-collapsible .card-head:hover { color: #0066cc; }
+    .card-collapsible .card-head::after { content: "▼"; font-size: 10px; opacity: .7; transition: transform .2s; }
+    .card-collapsible.collapsed .card-head { padding-bottom: 0; }
+    .card-collapsible.collapsed .card-head::after { transform: rotate(-90deg); }
+    .card-collapsible .card-body { }
+    .card-collapsible.collapsed .card-body { display: none; }
+    .history-item { font-size: 13px; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .history-item:last-child { border-bottom: none; }
+    .history-header { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; }
+    .history-header:hover { color: #0066cc; }
+    .history-acc { font-weight: 600; }
+    .history-detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee; }
+    .history-detail.open { display: block; }
+    .stats-row { font-size: 14px; padding: 6px 0; }
+    .stats-row strong { display: inline-block; min-width: 6em; }
+    @media (max-width: 900px) {
+      .app-layout { flex-direction: column; }
+      .sidebar { width: 100%; position: static; display: flex; flex-wrap: wrap; gap: 10px; }
+      .sidebar .card { flex: 1; min-width: 200px; }
+    }
     textarea, input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
     textarea { min-height: 120px; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
@@ -28,45 +53,49 @@
   </style>
 </head>
 <body>
+  <div class="app-layout">
+  <div class="main">
   <h1>English Dictation Trainer</h1>
   <p class="muted">
     Uses browser built-in TTS (speechSynthesis). Best on Chrome/Edge. Paste an article, then practice one sentence at a time.
   </p>
 
-  <div class="card">
-    <h3>1) Paste or load article</h3>
-    <div class="row" style="margin-bottom:8px; align-items:center;">
-      <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
-        <span style="min-width:6.5em; text-align:right;">Select article</span>
-        <select id="articleSelect" style="min-width:200px;">
-          <option value="">— Select or paste below —</option>
-        </select>
-      </label>
-      <button type="button" id="loadSelected">Load</button>
-      <span class="muted" style="font-size:12px;">or</span>
-      <label class="muted" style="cursor:pointer;">
-        <input type="file" id="txtFile" accept=".txt" style="display:none;" />
-        <button type="button" id="pickTxt">Select .txt file</button>
-      </label>
-      <a href="upload.html" class="muted" style="font-size:13px;">Upload materials</a>
+  <div class="card card-collapsible" id="cardArticle">
+    <h3 class="card-head">1) Paste or load article</h3>
+    <div class="card-body">
+      <div class="row" style="margin-bottom:8px; align-items:center;">
+        <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
+          <span style="min-width:6.5em; text-align:right;">Select article</span>
+          <select id="articleSelect" style="min-width:200px;">
+            <option value="">— Select or paste below —</option>
+          </select>
+        </label>
+        <button type="button" id="loadSelected">Load</button>
+        <span class="muted" style="font-size:12px;">or</span>
+        <label class="muted" style="cursor:pointer;">
+          <input type="file" id="txtFile" accept=".txt" style="display:none;" />
+          <button type="button" id="pickTxt">Select .txt file</button>
+        </label>
+        <a href="upload.html" class="muted" style="font-size:13px;">Upload materials</a>
+      </div>
+      <div class="row" style="margin-bottom:8px; align-items:center;" id="chapterRow">
+        <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
+          <span style="min-width:6.5em; text-align:right;">Section</span>
+          <select id="sectionSelect" style="min-width:200px;">
+            <option value="">— Load article first —</option>
+          </select>
+        </label>
+      </div>
+      <textarea id="article" placeholder="Or paste English article here..."></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button id="load">Load & Split Sentences</button>
+        <button type="button" id="downloadCleaned" class="muted" style="font-size:13px;">Download cleaned text</button>
+        <button type="button" id="clearContent" class="muted" style="font-size:13px;">Clear content</button>
+        <label class="muted"><input type="checkbox" id="strict" /> Strict mode</label>
+        <label class="muted"><input type="checkbox" id="hideText" checked /> Hide sentence (anti-peek)</label>
+      </div>
+      <p class="muted" style="margin-top:6px; font-size:12px;">Notion formatting is auto-cleaned; you can overwrite .txt in materials after download.</p>
     </div>
-    <div class="row" style="margin-bottom:8px; align-items:center;" id="chapterRow">
-      <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
-        <span style="min-width:6.5em; text-align:right;">Section</span>
-        <select id="sectionSelect" style="min-width:200px;">
-          <option value="">— Load article first —</option>
-        </select>
-      </label>
-    </div>
-    <textarea id="article" placeholder="Or paste English article here..."></textarea>
-    <div class="row" style="margin-top:10px;">
-      <button id="load">Load & Split Sentences</button>
-      <button type="button" id="downloadCleaned" class="muted" style="font-size:13px;">Download cleaned text</button>
-      <button type="button" id="clearContent" class="muted" style="font-size:13px;">Clear content</button>
-      <label class="muted"><input type="checkbox" id="strict" /> Strict mode</label>
-      <label class="muted"><input type="checkbox" id="hideText" checked /> Hide sentence (anti-peek)</label>
-    </div>
-    <p class="muted" style="margin-top:6px; font-size:12px;">Notion formatting is auto-cleaned; you can overwrite .txt in materials after download.</p>
   </div>
 
   <div class="card">
@@ -110,13 +139,29 @@
       <div class="muted">Type what you heard:</div>
       <textarea id="input" placeholder="Type your dictation here..."></textarea>
       <div class="row" style="margin-top:10px;">
-        <button id="check">✅ Check</button>
+        <button id="check" title="Check (Enter or Ctrl+Enter)">✅ Check</button>
         <button id="reveal">👁 Reveal Answer</button>
         <button id="clear">🧹 Clear Input</button>
       </div>
     </div>
 
     <div id="result" class="card" style="display:none;"></div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="card">
+      <h4 style="margin:0 0 10px 0;">Score stats</h4>
+      <div id="statsPanel">
+        <div class="stats-row"><strong>Checked:</strong> <span id="statCount">0</span></div>
+        <div class="stats-row"><strong>Average:</strong> <span id="statAvg">—</span></div>
+        <div class="stats-row muted" style="font-size:12px; margin-top:8px;">Most wrong: <span id="statWrong">—</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h4 style="margin:0 0 10px 0;">History</h4>
+      <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
+    </div>
+  </aside>
   </div>
 
 <script>
@@ -206,9 +251,9 @@
   }
 
   function accuracyFromCounts(refLen, del, ins) {
-    // simple: accuracy = 1 - (del+ins)/refLen (clamp 0..1)
+    // Word-error style: each substitution counts as 1 (not 2). So use max(del,ins) so one typo = one error.
     if (refLen===0) return 0;
-    const err = del + ins;
+    const err = Math.max(del, ins);
     return Math.max(0, Math.min(1, 1 - err/refLen));
   }
 
@@ -305,6 +350,39 @@
   let idx = 0;
   let articleList = [];  // from articles.json or uploaded JSON
   const stats = { total:0, sumAcc:0, wrongWords:{} };
+  const checkHistory = [];  // { sentenceNum, totalSentences, accPct, diffHtml, tip }
+
+  function renderSidebar() {
+    document.getElementById("statCount").textContent = stats.total;
+    document.getElementById("statAvg").textContent = stats.total
+      ? Math.round((stats.sumAcc / stats.total) * 100) + "%"
+      : "—";
+    const topWrong = Object.entries(stats.wrongWords)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,5)
+      .map(([w,c])=>`${w} (${c})`)
+      .join(", ") || "—";
+    document.getElementById("statWrong").textContent = topWrong;
+
+    const listEl = document.getElementById("historyList");
+    if (checkHistory.length === 0) {
+      listEl.innerHTML = '<span class="muted">No checks yet.</span>';
+      return;
+    }
+    listEl.innerHTML = checkHistory.slice().reverse().map((h, i) => {
+      const id = "hist-detail-" + i;
+      return `<div class="history-item">
+        <div class="history-header" onclick="document.getElementById('${id}').classList.toggle('open')">
+          <span>Sentence ${h.sentenceNum}/${h.totalSentences}</span>
+          <span class="history-acc">${h.accPct}%</span>
+        </div>
+        <div id="${id}" class="history-detail">
+          <div class="diff" style="margin:6px 0; line-height:1.6; font-size:12px;">${h.diffHtml || ""}</div>
+          <div class="muted" style="font-size:11px;"><b>Tip:</b> ${h.tip || ""}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
 
   function currentSentence() { return sentences[idx] || ""; }
 
@@ -450,6 +528,8 @@
     sectionIndex.push(...si);
     idx = 0;
     stats.total = 0; stats.sumAcc = 0; stats.wrongWords = {};
+    checkHistory.length = 0;
+    renderSidebar();
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     fillSectionDropdown();
@@ -540,6 +620,8 @@
     stats.total = 0;
     stats.sumAcc = 0;
     stats.wrongWords = {};
+    checkHistory.length = 0;
+    renderSidebar();
     document.getElementById("articleSelect").value = "";
     fillSectionDropdown();
     document.getElementById("result").style.display = "none";
@@ -600,11 +682,16 @@
 
   // Playback hotkeys (work while typing in textarea)
   document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); document.getElementById("check").click(); return; }
     if (!e.altKey) return;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); playAgain(); return; }
     if (e.key === "p" || e.key === "P") { e.preventDefault(); var s = currentSentence(); if (s) speak(s); return; }
     if (e.key === "ArrowLeft") { e.preventDefault(); document.getElementById("prev").click(); return; }
     if (e.key === "ArrowRight") { e.preventDefault(); document.getElementById("next").click(); return; }
+  });
+
+  document.getElementById("input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("check").click(); }
   });
 
   document.getElementById("reveal").onclick = () => {
@@ -656,7 +743,6 @@
     stats.total += 1;
     stats.sumAcc += acc;
 
-    // render diff
     const diffHtml = d.pretty.map(op => {
       if (op.type==="ok") return `<span class="ok">${op.tok}</span>`;
       if (op.type==="del") return `<span class="del">${op.tok}</span>`;
@@ -669,6 +755,18 @@
     if (d.counts.del > 0) tips.push("You missed some words—watch small function words (a/the/to/of).");
     if (d.counts.ins > 0) tips.push("You added extra words—slow down and follow the sentence structure.");
     if (tips.length === 0) tips.push("Great accuracy—try Fast mode next.");
+    const tipText = tips[0] + (tips[1] ? " " + tips[1] : "");
+
+    checkHistory.push({
+      sentenceNum: idx + 1,
+      totalSentences: sentences.length,
+      accPct,
+      diffHtml,
+      tip: tipText
+    });
+    renderSidebar();
+
+    // render result card
 
     const res = document.getElementById("result");
     res.style.display = "block";
@@ -677,10 +775,21 @@
       <div><b>Accuracy:</b> ${accPct}%</div>
       <div class="muted">Blue = missing, Red = extra, Yellow = substitution</div>
       <div class="diff" style="margin-top:10px; line-height:1.8;">${diffHtml}</div>
-      <div style="margin-top:10px;"><b>Tip:</b> ${tips[0]}${tips[1] ? " " + tips[1] : ""}</div>
+      <div style="margin-top:10px;"><b>Tip:</b> ${tipText}</div>
       ${(stats.total % 5 === 0) ? progressReport() : ""}
     `;
+
+    // 進入下一句並清空打字區（結果卡維持顯示可查看）
+    idx = Math.min(sentences.length - 1, idx + 1);
+    document.getElementById("input").value = "";
+    renderSentence();
+    updateDictationControls();
   };
+
+  // 「1) Paste or load article」區塊收合（點標題展開/收合）
+  document.querySelector("#cardArticle .card-head").addEventListener("click", () => {
+    document.getElementById("cardArticle").classList.toggle("collapsed");
+  });
 
   // initial
   loadVoices();
