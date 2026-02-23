@@ -18,11 +18,17 @@
     .card-collapsible.collapsed .card-head::after { transform: rotate(-90deg); }
     .card-collapsible .card-body { }
     .card-collapsible.collapsed .card-body { display: none; }
-    .history-item { font-size: 13px; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .history-summary { font-size: 12px; color: #666; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+    .history-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
     .history-item:last-child { border-bottom: none; }
-    .history-header { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; }
     .history-header:hover { color: #0066cc; }
-    .history-acc { font-weight: 600; }
+    .history-acc { font-weight: 600; min-width: 2.2em; text-align: right; }
+    .history-acc.high { color: #0a7b0a; }
+    .history-acc.mid { color: #b8860b; }
+    .history-acc.low { color: #c62828; }
+    .history-more { font-size: 11px; color: #0066cc; cursor: pointer; margin-top: 6px; }
+    .history-more:hover { text-decoration: underline; }
     .history-detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee; }
     .history-detail.open { display: block; }
     .stats-row { font-size: 14px; padding: 6px 0; }
@@ -43,13 +49,22 @@
     .card { border: 1px solid #e0e0e0; border-radius: 12px; padding: 14px; margin-top: 14px; background: #fff; }
     .muted { color: #666; font-size: 13px; }
     .hiddenText { background: #000; color: #000; border-radius: 8px; padding: 10px; user-select: none; }
+    .history-item.low-accuracy { background: #fef2f2; border-left: 3px solid #dc2626; }
+    .history-item.low-accuracy .history-header { font-weight: 500; }
+    .history-low-badge { font-size: 10px; color: #dc2626; margin-left: 6px; }
+    .practice-again-btn { font-size: 11px; padding: 4px 10px; margin-top: 4px; }
+    .repeat-go { color: #0066cc; text-decoration: none; }
+    .repeat-go:hover { text-decoration: underline; }
     .playback-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; background: #f5f5f5; border-radius: 10px; border: 1px solid #eee; }
     .playback-group button { margin: 0; }
     .diff span.ok { }
-    .diff span.ins { background: #ffe0e0; }
-    .diff span.del { background: #e0f0ff; text-decoration: line-through; }
-    .diff span.sub { background: #fff2cc; }
+    .diff span.ins { background: #ffe0e0; text-decoration: line-through; }
+    .diff span.del { background: #e0f0ff; }
+    .diff span.sub { background: #fff2cc; text-decoration: line-through; }
     .badge { display:inline-block; padding: 4px 10px; border: 1px solid #ddd; border-radius: 999px; margin-left: 8px; font-size: 12px; background: #fafafa; }
+    .progress-wrap { display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle; }
+    .progress-track { width: 80px; height: 8px; background: #e8e8e8; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #0066cc; border-radius: 4px; transition: width .2s ease; }
   </style>
 </head>
 <body>
@@ -74,9 +89,8 @@
         <span class="muted" style="font-size:12px;">or</span>
         <label class="muted" style="cursor:pointer;">
           <input type="file" id="txtFile" accept=".txt" style="display:none;" />
-          <button type="button" id="pickTxt">Select .txt file</button>
-        </label>
-        <a href="upload.html" class="muted" style="font-size:13px;">Upload materials</a>
+<button type="button" id="pickTxt">Select .txt file</button>
+      </label>
       </div>
       <div class="row" style="margin-bottom:8px; align-items:center;" id="chapterRow">
         <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
@@ -85,6 +99,7 @@
             <option value="">— Load article first —</option>
           </select>
         </label>
+        <button type="button" id="exitRepeatBtn" style="display:none; font-size:12px;">結束重練</button>
       </div>
       <textarea id="article" placeholder="Or paste English article here..."></textarea>
       <div class="row" style="margin-top:10px;">
@@ -123,6 +138,9 @@
         <select id="voice"></select>
       </label>
       <span class="badge" id="idxBadge">Sentence 0 / 0</span>
+      <div class="progress-wrap" id="sentenceProgressWrap" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="sentenceProgressFill"></div></div>
+      </div>
       <button type="button" id="playSection" title="Play entire current section">▶ Play section</button>
     </div>
 
@@ -139,7 +157,7 @@
       <div class="muted">Type what you heard:</div>
       <textarea id="input" placeholder="Type your dictation here..."></textarea>
       <div class="row" style="margin-top:10px;">
-        <button id="check" title="Check (Enter or Ctrl+Enter)">✅ Check</button>
+        <button id="check" title="Check (Ctrl+Enter)">✅ Check</button>
         <button id="reveal">👁 Reveal Answer</button>
         <button id="clear">🧹 Clear Input</button>
       </div>
@@ -158,7 +176,13 @@
       </div>
     </div>
     <div class="card">
-      <h4 style="margin:0 0 10px 0;">History</h4>
+      <h4 style="margin:0 0 8px 0;">History</h4>
+      <div id="repeatPracticePanel" style="display:none; margin-bottom:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:12px;"></div>
+      <div class="row" style="margin-bottom:8px;">
+        <label class="muted" style="font-size:12px;">Mark as review below:</label>
+        <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="準確率低於此%視為需重練" />
+        <span class="muted" style="font-size:12px;">%</span>
+      </div>
       <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
     </div>
     <div class="card">
@@ -367,10 +391,35 @@
   const checkHistory = [];  // { sentenceNum, totalSentences, accPct, diffHtml, tip }
   let currentArticleId = "";  // set when loading from dropdown
   let playReplayCountForCurrentSentence = 0;
+  let lastResultSentence = "";  // 結果卡回放用
+  let lastResultIndex = 0;     // 結果卡對應的句子索引（0-based）
+  let repeatPracticeIds = [];  // 重複練習清單（sentence ID 字串），依文章存 localStorage
+  let isRepeatMode = false;
+  let fullSentences = [];
+  let fullSectionIndex = [];
+  let repeatModeIds = [];  // 重練模式下實際顯示的 sentenceId 順序（與 sentences 對應）
+
+  function toSentenceId(articleId, index0) {
+    return (articleId || "pasted") + "_" + index0;
+  }
+  function parseSentenceId(id) {
+    if (!id || typeof id !== "string") return { articleId: "", index: -1 };
+    const last = id.lastIndexOf("_");
+    if (last < 0) return { articleId: id, index: -1 };
+    const idx = parseInt(id.slice(last + 1), 10);
+    return { articleId: id.slice(0, last), index: isNaN(idx) ? -1 : idx };
+  }
+  function parseIndexFromId(id) {
+    return parseSentenceId(id).index;
+  }
 
   // ---------- Score persistence (localStorage) ----------
   const SCORES_KEY = "dictationTrainer_scores";
   const MAX_SCORES = 5000;
+  const HISTORY_KEY_PREFIX = "dictationTrainer_history_";
+  const STATS_KEY_PREFIX = "dictationTrainer_stats_";
+  const REPEAT_KEY_PREFIX = "dictationTrainer_repeat_";
+  const MAX_HISTORY = 200;
   function getScores() {
     try { const raw = localStorage.getItem(SCORES_KEY); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
   }
@@ -379,6 +428,107 @@
     arr.push(record);
     if (arr.length > MAX_SCORES) arr.splice(0, arr.length - MAX_SCORES);
     localStorage.setItem(SCORES_KEY, JSON.stringify(arr));
+  }
+  function historyKey(id) { return HISTORY_KEY_PREFIX + (id || "pasted"); }
+  function statsKey(id) { return STATS_KEY_PREFIX + (id || "pasted"); }
+  function saveCheckHistory() {
+    try {
+      if (checkHistory.length > MAX_HISTORY) checkHistory.splice(0, checkHistory.length - MAX_HISTORY);
+      localStorage.setItem(historyKey(currentArticleId), JSON.stringify(checkHistory));
+      localStorage.setItem(statsKey(currentArticleId), JSON.stringify({ total: stats.total, sumAcc: stats.sumAcc, wrongWords: stats.wrongWords }));
+    } catch (e) {}
+  }
+  function loadCheckHistory(articleId) {
+    checkHistory.length = 0;
+    try {
+      const raw = localStorage.getItem(historyKey(articleId));
+      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) checkHistory.push(...arr); }
+      const sraw = localStorage.getItem(statsKey(articleId));
+      if (sraw) { const o = JSON.parse(sraw); stats.total = o.total || 0; stats.sumAcc = o.sumAcc || 0; stats.wrongWords = o.wrongWords && typeof o.wrongWords === "object" ? o.wrongWords : {}; }
+    } catch (e) {}
+  }
+  function clearArticleStorage(articleId) {
+    try {
+      localStorage.removeItem(historyKey(articleId));
+      localStorage.removeItem(statsKey(articleId));
+      localStorage.removeItem(REPEAT_KEY_PREFIX + (articleId || "pasted"));
+    } catch (e) {}
+  }
+  function repeatKey(id) { return REPEAT_KEY_PREFIX + (id || "pasted"); }
+  function loadRepeatList(articleId) {
+    repeatPracticeIds = [];
+    try {
+      const raw = localStorage.getItem(repeatKey(articleId));
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return;
+      if (arr.length && typeof arr[0] === "number") {
+        repeatPracticeIds = arr.filter(i => typeof i === "number" && i >= 0).map(i => toSentenceId(articleId, i));
+        try { localStorage.setItem(repeatKey(articleId), JSON.stringify(repeatPracticeIds)); } catch (e2) {}
+      } else {
+        repeatPracticeIds = arr.filter(i => typeof i === "string" && i);
+      }
+    } catch (e) {}
+  }
+  function saveRepeatList() {
+    try { localStorage.setItem(repeatKey(currentArticleId), JSON.stringify(repeatPracticeIds)); } catch (e) {}
+  }
+  function addToRepeatList(sentenceId) {
+    if (!sentenceId || repeatPracticeIds.indexOf(sentenceId) >= 0) return;
+    repeatPracticeIds.push(sentenceId);
+    repeatPracticeIds.sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
+    saveRepeatList();
+  }
+
+  function enterRepeatMode() {
+    if (!sentences.length) return;
+    fullSentences = sentences.slice();
+    fullSectionIndex = sectionIndex.slice();
+    // 合併：手動加入的重複練習 + History 中低於門檻的「建議重練」句子
+    const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+    const idSet = new Set(repeatPracticeIds);
+    checkHistory.forEach(h => {
+      if (h.accPct >= threshold) return;
+      const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+      if (sid && parseIndexFromId(sid) >= 0) idSet.add(sid);
+    });
+    const validIds = Array.from(idSet).filter(id => {
+      const i = parseIndexFromId(id);
+      return i >= 0 && fullSentences[i] !== undefined;
+    }).sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
+    if (validIds.length === 0) return;
+    repeatModeIds = validIds.slice();
+    sentences.length = 0;
+    sentences.push(...repeatModeIds.map(id => fullSentences[parseIndexFromId(id)]));
+    sectionIndex.length = 0;
+    sectionIndex.push(...sentences.map(() => 0));
+    idx = 0;
+    isRepeatMode = true;
+    document.getElementById("exitRepeatBtn").style.display = "";
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    fillSectionDropdown();
+    renderSentence();
+    updateDictationControls();
+  }
+
+  function exitRepeatMode() {
+    if (!isRepeatMode || fullSentences.length === 0) return;
+    sentences.length = 0;
+    sentences.push(...fullSentences);
+    sectionIndex.length = 0;
+    sectionIndex.push(...fullSectionIndex);
+    idx = 0;
+    repeatModeIds = [];
+    fullSentences = [];
+    fullSectionIndex = [];
+    isRepeatMode = false;
+    document.getElementById("exitRepeatBtn").style.display = "none";
+    document.getElementById("result").style.display = "none";
+    document.getElementById("input").value = "";
+    fillSectionDropdown();
+    renderSentence();
+    updateDictationControls();
   }
 
   function renderSidebar() {
@@ -398,19 +548,124 @@
       listEl.innerHTML = '<span class="muted">No checks yet.</span>';
       return;
     }
-    listEl.innerHTML = checkHistory.slice().reverse().map((h, i) => {
+    const reversed = checkHistory.slice().reverse();
+    const total = checkHistory.length;
+    const avg = total ? Math.round(checkHistory.reduce((s, h) => s + h.accPct, 0) / total) : 0;
+    const seen = new Set();
+    const deduped = reversed.filter(h => {
+      const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + h.sentenceNum);
+      if (seen.has(sid)) return false;
+      seen.add(sid);
+      return true;
+    });
+    const maxShow = 15;
+    const showAll = listEl.dataset.historyShowAll === "1";
+    const toShow = showAll ? deduped : deduped.slice(0, maxShow);
+    const hasMore = deduped.length > maxShow && !showAll;
+    const moreCount = deduped.length - maxShow;
+    function accClass(pct) {
+      if (pct >= 90) return "high";
+      if (pct >= 70) return "mid";
+      return "low";
+    }
+    let html = `<div class="history-summary">${total} checks · ${avg}% avg</div>`;
+    html += toShow.map((h, i) => {
       const id = "hist-detail-" + i;
-      return `<div class="history-item">
+      const accCls = accClass(h.accPct);
+      const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+      const isLow = h.accPct < threshold;
+      const lowClass = isLow ? " low-accuracy" : "";
+      const lowBadge = isLow ? "<span class=\"history-low-badge\">&lt;" + threshold + "% 建議重練</span>" : "";
+      const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + (h.sentenceNum || 0));
+      return `<div class="history-item${lowClass}">
         <div class="history-header" onclick="document.getElementById('${id}').classList.toggle('open')">
-          <span>Sentence ${h.sentenceNum}/${h.totalSentences}</span>
-          <span class="history-acc">${h.accPct}%</span>
+          <span>#${h.sentenceNum}/${h.totalSentences}${lowBadge}</span>
+          <span class="history-acc ${accCls}">${h.accPct}%</span>
         </div>
         <div id="${id}" class="history-detail">
           <div class="diff" style="margin:6px 0; line-height:1.6; font-size:12px;">${h.diffHtml || ""}</div>
           <div class="muted" style="font-size:11px;"><b>Tip:</b> ${h.tip || ""}</div>
+          ${isLow ? `<div style="margin-top:8px;"><button type="button" class="practice-again-btn" data-sid="${sid.replace(/"/g, '&quot;')}">▶ 重練此句</button></div>` : ""}
         </div>
       </div>`;
     }).join("");
+    if (hasMore) {
+      html += `<div class="history-more" id="historyShowMore">Show more (${moreCount})</div>`;
+    } else if (showAll && deduped.length > maxShow) {
+      html += `<div class="history-more" id="historyShowMore">Show less</div>`;
+    }
+    listEl.innerHTML = html;
+    const moreEl = document.getElementById("historyShowMore");
+    if (moreEl) {
+      moreEl.onclick = () => {
+        listEl.dataset.historyShowAll = showAll ? "0" : "1";
+        renderSidebar();
+      };
+    }
+    listEl.querySelectorAll(".practice-again-btn").forEach(btn => {
+      btn.onclick = function() {
+        const sid = this.getAttribute("data-sid");
+        if (!sid || !sentences.length) return;
+        if (isRepeatMode) {
+          const i = repeatModeIds.indexOf(sid);
+          if (i >= 0) idx = i;
+          else {
+            exitRepeatMode();
+            idx = Math.max(0, Math.min(sentences.length - 1, parseIndexFromId(sid)));
+          }
+        } else {
+          idx = Math.max(0, Math.min(sentences.length - 1, parseIndexFromId(sid)));
+        }
+        document.getElementById("result").style.display = "none";
+        document.getElementById("input").value = "";
+        renderSentence();
+        updateDictationControls();
+      };
+    });
+    renderRepeatList();
+  }
+
+  function renderRepeatList() {
+    const panel = document.getElementById("repeatPracticePanel");
+    if (!panel) return;
+    if (repeatPracticeIds.length === 0) {
+      panel.style.display = "none";
+      panel.innerHTML = "";
+      return;
+    }
+    const totalOrig = fullSentences.length || sentences.length;
+    const links = repeatPracticeIds.map(sid => {
+      const origNum = parseIndexFromId(sid) + 1;
+      return "<a href=\"#\" class=\"repeat-go\" data-sid=\"" + sid.replace(/"/g, "&quot;") + "\">#" + origNum + (totalOrig ? "/" + totalOrig : "") + "</a>";
+    }).join(", ");
+    panel.style.display = "block";
+    panel.innerHTML = "<span class=\"muted\">重複練習 (" + repeatPracticeIds.length + "):</span> " + links + " <button type=\"button\" id=\"repeatClearBtn\" style=\"font-size:11px; padding:2px 8px; margin-left:6px;\">Clear</button> <button type=\"button\" id=\"startRepeatBtn\" style=\"font-size:11px; padding:2px 8px;\">開始重練</button>";
+    panel.querySelectorAll(".repeat-go").forEach(a => {
+      a.onclick = function(e) {
+        e.preventDefault();
+        const sid = this.getAttribute("data-sid");
+        if (!sid || !sentences.length) return;
+        if (isRepeatMode) {
+          const i = repeatModeIds.indexOf(sid);
+          if (i < 0) return;
+          idx = i;
+        } else {
+          idx = Math.max(0, Math.min(sentences.length - 1, parseIndexFromId(sid)));
+        }
+        document.getElementById("result").style.display = "none";
+        document.getElementById("input").value = "";
+        renderSentence();
+        updateDictationControls();
+      };
+    });
+    const clearBtn = document.getElementById("repeatClearBtn");
+    if (clearBtn) clearBtn.onclick = function() {
+      repeatPracticeIds = [];
+      saveRepeatList();
+      renderRepeatList();
+    };
+    const startRepeatBtn = document.getElementById("startRepeatBtn");
+    if (startRepeatBtn) startRepeatBtn.onclick = enterRepeatMode;
   }
 
   function renderLearningStats() {
@@ -461,6 +716,16 @@
   function fillSectionDropdown() {
     const sel = document.getElementById("sectionSelect");
     const row = document.getElementById("chapterRow");
+    const exitBtn = document.getElementById("exitRepeatBtn");
+    if (isRepeatMode) {
+      sel.innerHTML = "";
+      sel.appendChild(new Option("重複練習 (" + sentences.length + " 句)", "repeat"));
+      sel.value = "repeat";
+      if (exitBtn) exitBtn.style.display = "";
+      row.style.display = "";
+      return;
+    }
+    if (exitBtn) exitBtn.style.display = "none";
     const numSections = sectionIndex.length ? Math.max(...sectionIndex) + 1 : 0;
     sel.innerHTML = "";
     if (numSections === 0) {
@@ -500,7 +765,35 @@
     const sec = sectionIndex[idx];
     const sectionSelect = document.getElementById("sectionSelect");
     if (sectionSelect.options.length > 1 && sec !== undefined) sectionSelect.value = String(sec);
-    document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total}` : `Sentence 0 / 0`;
+    const progressWrap = document.getElementById("sentenceProgressWrap");
+    const progressFill = document.getElementById("sentenceProgressFill");
+    let currentNum = 0, totalNum = 0;
+    if (isRepeatMode && repeatModeIds.length > idx) {
+      const origNum = parseIndexFromId(repeatModeIds[idx]) + 1;
+      const origTotal = fullSentences.length;
+      currentNum = idx + 1;
+      totalNum = total;
+      document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total} (原#${origNum}/${origTotal})` : `Sentence 0 / 0`;
+    } else if (sec !== undefined && sectionIndex.length === sentences.length) {
+      const sectionIndices = sentences.map((_, i) => i).filter(i => sectionIndex[i] === sec);
+      const posInSection = sectionIndices.indexOf(idx) + 1;
+      const totalInSection = sectionIndices.length;
+      currentNum = posInSection;
+      totalNum = totalInSection;
+      document.getElementById("idxBadge").textContent = totalInSection ? `Sentence ${posInSection} / ${totalInSection}` : `Sentence 0 / 0`;
+    } else {
+      currentNum = idx + 1;
+      totalNum = total;
+      document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total}` : `Sentence 0 / 0`;
+    }
+    if (progressWrap && progressFill) {
+      if (totalNum > 0) {
+        progressWrap.style.display = "inline-flex";
+        progressFill.style.width = (currentNum / totalNum * 100) + "%";
+      } else {
+        progressWrap.style.display = "none";
+      }
+    }
   }
 
   function applySavedSection() {
@@ -599,12 +892,17 @@
     sectionIndex.length = 0;
     sectionIndex.push(...si);
     idx = 0;
-    stats.total = 0; stats.sumAcc = 0; stats.wrongWords = {};
-    checkHistory.length = 0;
     playReplayCountForCurrentSentence = 0;
     const sel = document.getElementById("articleSelect").value;
     const art = (sel !== "" && articleList[parseInt(sel, 10)]) ? articleList[parseInt(sel, 10)] : null;
     currentArticleId = art ? (art.id || "") : "";
+    isRepeatMode = false;
+    repeatModeIds = [];
+    fullSentences = [];
+    fullSectionIndex = [];
+    document.getElementById("exitRepeatBtn").style.display = "none";
+    loadCheckHistory(currentArticleId);
+    loadRepeatList(currentArticleId);
     renderSidebar();
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
@@ -694,12 +992,20 @@
     sentences.length = 0;
     sectionIndex.length = 0;
     idx = 0;
+    isRepeatMode = false;
+    repeatModeIds = [];
+    fullSentences = [];
+    fullSectionIndex = [];
+    document.getElementById("exitRepeatBtn").style.display = "none";
+    const prevId = currentArticleId;
     stats.total = 0;
     stats.sumAcc = 0;
     stats.wrongWords = {};
     checkHistory.length = 0;
+    repeatPracticeIds = [];
     currentArticleId = "";
     playReplayCountForCurrentSentence = 0;
+    clearArticleStorage(prevId);
     renderSidebar();
     document.getElementById("articleSelect").value = "";
     fillSectionDropdown();
@@ -761,6 +1067,7 @@
     if (s) { playReplayCountForCurrentSentence++; speak(s); }
   }
   document.getElementById("again").onclick = playAgain;
+  document.getElementById("exitRepeatBtn").onclick = exitRepeatMode;
 
   // Playback hotkeys (work while typing in textarea)
   document.addEventListener("keydown", (e) => {
@@ -772,9 +1079,6 @@
     if (e.key === "ArrowRight") { e.preventDefault(); document.getElementById("next").click(); return; }
   });
 
-  document.getElementById("input").addEventListener("keydown", function(e) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("check").click(); }
-  });
 
   document.getElementById("reveal").onclick = () => {
     const box = document.getElementById("sentenceBox");
@@ -839,21 +1143,28 @@
     if (tips.length === 0) tips.push("Great accuracy—try Fast mode next.");
     const tipText = tips[0] + (tips[1] ? " " + tips[1] : "");
 
+    const sentenceId = isRepeatMode ? repeatModeIds[idx] : toSentenceId(currentArticleId, idx);
+    const recordSentenceNum = isRepeatMode ? (parseIndexFromId(sentenceId) + 1) : (idx + 1);
+    const recordTotalSentences = isRepeatMode ? fullSentences.length : sentences.length;
     checkHistory.push({
-      sentenceNum: idx + 1,
-      totalSentences: sentences.length,
+      sentenceNum: recordSentenceNum,
+      totalSentences: recordTotalSentences,
+      sentenceId,
       accPct,
       diffHtml,
       tip: tipText
     });
+    saveCheckHistory();
 
     const secIdx = sectionIndex[idx];
+    const recordSentenceIndex = isRepeatMode ? parseIndexFromId(sentenceId) : idx;
     if (!document.getElementById("noRecordTest").checked) {
       saveScore({
         ts: new Date().toISOString(),
         articleId: currentArticleId,
         sectionIndex: secIdx !== undefined ? secIdx : 0,
-        sentenceIndex: idx,
+        sentenceIndex: recordSentenceIndex,
+        sentenceId,
         accuracy: accPct,
         replayCount: playReplayCountForCurrentSentence
       });
@@ -865,16 +1176,32 @@
 
     // render result card
 
+    lastResultSentence = ref;
+    lastResultIndex = idx;
     const res = document.getElementById("result");
     res.style.display = "block";
     res.innerHTML = `
-      <h4>Result</h4>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h4 style="margin:0;">Result</h4>
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="resultAddRepeat">➕ 加入重複練習</button>
+          <button type="button" id="resultReplay">🔊 Replay sentence</button>
+        </div>
+      </div>
       <div><b>Accuracy:</b> ${accPct}%</div>
       <div class="muted">Blue = missing, Red = extra, Yellow = substitution</div>
       <div class="diff" style="margin-top:10px; line-height:1.8;">${diffHtml}</div>
       <div style="margin-top:10px;"><b>Tip:</b> ${tipText}</div>
       ${(stats.total % 5 === 0) ? progressReport() : ""}
     `;
+    const replayBtn = document.getElementById("resultReplay");
+    if (replayBtn) replayBtn.onclick = () => speak(lastResultSentence);
+    const addRepeatBtn = document.getElementById("resultAddRepeat");
+    if (addRepeatBtn) addRepeatBtn.onclick = () => {
+      const sid = isRepeatMode ? repeatModeIds[lastResultIndex] : toSentenceId(currentArticleId, lastResultIndex);
+      addToRepeatList(sid);
+      renderRepeatList();
+    };
 
     // 進入下一句並清空打字區（結果卡維持顯示可查看）
     idx = Math.min(sentences.length - 1, idx + 1);
@@ -894,6 +1221,20 @@
       renderLearningStats();
     }
   };
+
+  const lowThresholdKey = "dictationTrainer_lowThreshold";
+  const lowThresholdEl = document.getElementById("lowAccuracyThreshold");
+  var savedThreshold = localStorage.getItem(lowThresholdKey);
+  if (savedThreshold !== null) {
+    var n = parseInt(savedThreshold, 10);
+    if (!isNaN(n) && n >= 0 && n <= 100) lowThresholdEl.value = n;
+  }
+  lowThresholdEl.addEventListener("change", function() {
+    var n = Math.min(100, Math.max(0, parseInt(this.value, 10) || 60));
+    this.value = n;
+    localStorage.setItem(lowThresholdKey, String(n));
+    renderSidebar();
+  });
 
   // initial
   loadVoices();
