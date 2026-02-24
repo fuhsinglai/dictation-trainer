@@ -7,10 +7,11 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
   <style>
     /* Paste or load article：只調這兩個（最小寬度、與其他三張的比例） */
-    :root { --card-article-min: 680px; --card-article-flex: 12; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; padding: 0 16px; }
+    :root { --card-article-min: 680px; --card-article-flex: 12; --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-card: 0 2px 8px rgba(0,0,0,0.06); }
+    body { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; margin: 0; padding: 0 16px; background: #f5f7fa; color: #1a1a1a; -webkit-font-smoothing: antialiased; }
     .app-layout { display: flex; flex-direction: row; gap: 24px; width: 100%; max-width: min(1400px, 96vw); margin: 24px auto; align-items: flex-start; box-sizing: border-box; }
     .main { flex: 1; min-width: 0; max-width: 100%; }
+    .main .header-row h2 { font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
     .sidebar { width: min(840px, 65vw); min-width: 260px; flex-shrink: 0; position: sticky; top: 24px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; align-items: stretch; }
     .sidebar .card { margin-top: 10px; flex: 1 1 0; min-width: 120px; }
     #cardArticle { flex: var(--card-article-flex) 1 0; min-width: var(--card-article-min); }
@@ -38,16 +39,17 @@
     .history-detail.open { display: block; }
     .stats-row { font-size: 14px; padding: 6px 0; }
     .stats-row strong { display: inline-block; min-width: 6em; }
-    textarea, input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
-    textarea { min-height: 120px; }
+    textarea, input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; transition: border-color .2s, box-shadow .2s; }
+    textarea:focus, input:focus { outline: none; border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
+    textarea { min-height: 72px; }
     #input { font-size: 24px; line-height: 1.5; color: #2563eb; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    button, select { padding: 8px 14px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; background: #f8f8f8; cursor: pointer; transition: background .15s, border-color .15s; }
-    button:hover, select:hover { background: #eee; border-color: #bbb; }
-    button:active { background: #e0e0e0; }
+    button, select { padding: 8px 14px; font-size: 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s; box-shadow: var(--shadow-sm); }
+    button:hover, select:hover { background: #f8fafc; border-color: #9ca3af; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+    button:active { background: #f1f5f9; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
     button:disabled, select:disabled { opacity: 0.6; cursor: not-allowed; }
     select { cursor: pointer; }
-    .card { border: 1px solid #e0e0e0; border-radius: 12px; padding: 14px; margin-top: 14px; background: #fff; }
+    .card { border: 1px solid #e8eaed; border-radius: 14px; padding: 16px 18px; margin-top: 14px; background: #fff; box-shadow: var(--shadow-card); }
     .muted { color: #666; font-size: 13px; }
     .hiddenText { background: #000; color: #000; border-radius: 8px; padding: 10px; user-select: none; }
     .history-item.low-accuracy { background: #fef2f2; border-left: 3px solid #dc2626; }
@@ -63,17 +65,29 @@
     .diff span.ins { background: #ffe0e0; text-decoration: line-through; }
     .diff span.del { background: #e0f0ff; }
     .diff span.sub { background: #fff2cc; text-decoration: line-through; }
-    .badge { display:inline-block; padding: 4px 10px; border: 1px solid #ddd; border-radius: 999px; margin-left: 8px; font-size: 12px; background: #fafafa; }
+    .badge { display:inline-block; padding: 5px 12px; border: 1px solid #e2e8f0; border-radius: 999px; margin-left: 8px; font-size: 12px; background: #f8fafc; font-weight: 500; color: #475569; }
     .progress-wrap { display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle; }
     .progress-track { width: 80px; height: 8px; background: #e8e8e8; border-radius: 4px; overflow: hidden; }
     .progress-fill { height: 100%; background: #0066cc; border-radius: 4px; transition: width .2s ease; }
-    .dictation-area { display: flex; gap: 0; border: 2px solid #22c55e; border-radius: 12px; overflow: hidden; margin-top: 10px; }
-    .dictation-controls { width: 140px; flex-shrink: 0; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 16px; border-right: 2px solid #22c55e; background: #fafafa; }
+    .help-btn { margin-left: 12px; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; color: #475569; box-shadow: var(--shadow-sm); transition: all .2s; }
+    .help-btn:hover { background: #f8fafc; color: #1e293b; border-color: #94a3b8; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+    .help-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.35); backdrop-filter: blur(4px); z-index: 9998; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .help-overlay.open { display: flex; }
+    .help-modal { background: #fff; border-radius: 14px; max-width: 520px; max-height: 85vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1); padding: 20px 24px; }
+    .help-modal h3 { margin: 0 0 12px 0; font-size: 18px; }
+    .help-modal h4 { margin: 16px 0 8px 0; font-size: 14px; color: #333; }
+    .help-modal p, .help-modal ul { margin: 0 0 10px 0; font-size: 14px; line-height: 1.6; color: #444; }
+    .help-modal ul { padding-left: 20px; }
+    .help-modal code, .help-modal kbd { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .help-close { float: right; margin: -8px -8px 8px 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 13px; }
+    .help-close:hover { background: #f0f0f0; }
+    .dictation-area { display: flex; gap: 0; border: 2px solid #22c55e; border-radius: 14px; overflow: hidden; margin-top: 8px; box-shadow: 0 4px 14px rgba(34,197,94,0.12); }
+    .dictation-controls { width: 140px; flex-shrink: 0; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-right: 2px solid #22c55e; background: linear-gradient(180deg, #f8fcf9 0%, #f0fdf4 100%); }
     .dictation-controls .nav-buttons { display: flex; gap: 8px; }
-    .dictation-controls .btn-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; }
-    .dictation-controls .btn-circle:hover { background: #dcfce7; }
-    .dictation-controls .btn-play { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; padding: 0; color: #2563eb; }
-    .dictation-controls .btn-play:hover { background: #dcfce7; }
+    .dictation-controls .btn-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: var(--shadow-sm); transition: all .2s; }
+    .dictation-controls .btn-circle:hover { background: #dcfce7; box-shadow: 0 2px 8px rgba(34,197,94,0.2); }
+    .dictation-controls .btn-play { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; padding: 0; color: #2563eb; box-shadow: var(--shadow-sm); transition: all .2s; }
+    .dictation-controls .btn-play:hover { background: #dcfce7; box-shadow: 0 2px 10px rgba(34,197,94,0.25); }
     .dictation-controls .speed-label { font-size: 12px; color: #666; margin-bottom: 6px; }
     .dictation-controls .speed-wrap { width: 100%; }
     .speed-slider-wrap { display: flex; align-items: center; gap: 10px; }
@@ -92,24 +106,27 @@
     .speed-value { font-size: 12px; color: #374151; min-width: 2.8em; font-variant-numeric: tabular-nums; }
     .dictation-controls .btn-circle svg, .dictation-controls .btn-play svg { width: 20px; height: 20px; fill: currentColor; }
     .dictation-controls .btn-play svg { width: 24px; height: 24px; }
-    .dictation-controls-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 14px; border-radius: 999px; border: 2px solid #22c55e; background: #fff; color: #166534; cursor: pointer; font-size: 13px; font-weight: 500; }
-    .dictation-controls-btn:hover { background: #dcfce7; }
+    .dictation-controls-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 14px; border-radius: 999px; border: 2px solid #22c55e; background: #fff; color: #166534; cursor: pointer; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-sm); transition: all .2s; }
+    .dictation-controls-btn:hover { background: #dcfce7; box-shadow: 0 2px 8px rgba(34,197,94,0.2); }
     .dictation-controls-btn svg { flex-shrink: 0; }
     .dictation-controls .dictation-btn-play-section { margin-top: auto; }
     .btn-icon { display: inline-flex; align-items: center; gap: 6px; }
     .btn-icon svg { width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
-    .dictation-content { flex: 1; min-width: 0; padding: 16px; border-left: none; display: flex; flex-direction: column; gap: 12px; }
+    .dictation-content { flex: 1; min-width: 0; padding: 12px 16px; border-left: none; display: flex; flex-direction: column; gap: 10px; background: #fff; }
     .dictation-content .top-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
     .dictation-content .voice-wrap { display: flex; align-items: center; gap: 8px; }
     .dictation-content .progress-row { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-    #sentenceBox.dictation-sentence-box { min-height: 60px; border-radius: 8px; padding: 10px; background: #f0f0f0; color: #111; }
+    #sentenceBox.dictation-sentence-box { min-height: 44px; border-radius: 8px; padding: 8px 10px; background: #f0f0f0; color: #111; }
     #sentenceBox.dictation-sentence-box.hiddenText { background: #000; color: #000; }
   </style>
 </head>
 <body>
   <div class="app-layout">
   <div class="main">
-    <h2>English Dictation Trainer</h2>
+    <div class="header-row" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:6px;">
+      <h2 style="margin:0;">English Dictation Trainer <button type="button" id="helpBtn" class="help-btn">Help</button></h2>
+      <p class="muted" style="font-size:12px; margin:0;"> <i>We recommend Microsoft Edge for more voice options.</i></p>
+    </div>
   <div class="card">
     <h3> Dictation </h3>
     <div class="dictation-area">
@@ -145,9 +162,10 @@
               <div class="progress-track"><div class="progress-fill" id="sentenceProgressFill"></div></div>
             </div>
           </div>
-        </div>
+          </div>
         <div>
-          <textarea id="input" placeholder="Type your dictation here ..."></textarea>
+          <textarea id="input" placeholder="Type your dictation here ... "></textarea>
+          <div class="muted" style="font-size:12px;" align="right"><i>No Mouse: [Alt+P] play, [Ctrl+Enter] check. [Alt+←]/[Alt+→] prev/next, then [Alt+P] to play.</i></div>
           <div id="sentenceBox" class="card dictation-sentence-box"></div>
           <br>
           <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-bottom:6px;">Show section</button>
@@ -190,13 +208,12 @@
         </label>
         <button type="button" id="exitRepeatBtn" style="display:none; font-size:12px;">結束重練</button>
       </div>
-      <textarea id="article" placeholder="Or paste English article here..."></textarea>
+      <p class="muted" style="font-size:12px; margin:0 0 6px 0;">Paste or type your article in the box below, then click <strong>Load & Split Sentences</strong>.</p>
+      <textarea id="article" placeholder="Paste English article here, or type..."></textarea>
       <div class="row" style="margin-top:10px;">
         <button id="load">Load & Split Sentences</button>
         <button type="button" id="downloadCleaned" class="muted" style="font-size:13px;">Download cleaned text</button>
         <button type="button" id="clearContent" class="muted" style="font-size:13px;">Clear content</button>
-        <label class="muted"><input type="checkbox" id="strict" /> Strict mode</label>
-        <label class="muted"><input type="checkbox" id="hideText" checked /> Hide sentence (anti-peek)</label>
       </div>
       <p class="muted" style="margin-top:6px; font-size:12px;">Notion formatting is auto-cleaned; you can overwrite .txt in materials after download.</p>
     </div>
@@ -237,6 +254,33 @@
       <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
     </div>
   </aside>
+  </div>
+
+  <div id="helpOverlay" class="help-overlay" aria-hidden="true">
+    <div class="help-modal" onclick="event.stopPropagation()">
+      <button type="button" class="help-close" id="helpClose" aria-label="Close">Close</button>
+      <h3>操作說明 / How to use</h3>
+      <p style="background:#e8f4fd; border-left:4px solid #2563eb; padding:10px 12px; margin:0 0 14px 0; border-radius:0 8px 8px 0;"><strong>建議使用 Microsoft Edge</strong>，可享有更多語音（發音）選擇。</p>
+      <h4>1. 載入文章</h4>
+      <p>在右側「Paste or load article」選擇文章或貼上/上傳 .txt，按 <kbd>Load</kbd>。文章會依空行分成多個 Section。</p>
+      <h4>2. 聽打流程</h4>
+      <ul>
+        <li>左側：<kbd>◀</kbd><kbd>▶</kbd> 換句，大按鈕 <kbd>▶</kbd> 播放目前句子，Speed 可調語速，「Play section」播放整段。</li>
+        <li>上方 Voice 可選發音，中間框輸入你聽到的句子。</li>
+        <li><kbd>Check</kbd> 對答案，<kbd>Reveal Answer</kbd> 直接看答案，<kbd>Clear Input</kbd> 清空輸入。</li>
+      </ul>
+      <h4>3. 鍵盤快速鍵（免滑鼠）</h4>
+      <ul>
+        <li><kbd>Alt+P</kbd> 播放目前句</li>
+        <li><kbd>Ctrl+Enter</kbd> 送出檢查</li>
+        <li><kbd>Alt+←</kbd> 上一句　<kbd>Alt+→</kbd> 下一句</li>
+        <li>換句後再按 <kbd>Alt+P</kbd> 播放該句</li>
+      </ul>
+      <h4>4. History 與重練</h4>
+      <p>右側 History 依 Section 顯示每段檢查紀錄與平均。低於門檻的會標「建議重練」；可點「重練此句」單句重練，或 Section 旁的「Re-practice low」只重練該段低分句。Export 可匯出 JSON 供 AI 分析弱點。</p>
+      <h4>5. 其他</h4>
+      <p>「Hide sentence」可隱藏答案區；「Show section」顯示整段原文。Strict mode 開啟時標點與大小寫須一致才算對。</p>
+    </div>
   </div>
 
 <script>
@@ -934,7 +978,7 @@
   }
 
   function renderSentence() {
-    const hide = document.getElementById("hideText").checked;
+    const hide = true;
     const box = document.getElementById("sentenceBox");
     const s = currentSentence();
     box.className = "card dictation-sentence-box";
@@ -1132,7 +1176,28 @@
 
   function loadSelectedArticle(restoreSection) {
     const i = document.getElementById("articleSelect").value;
-    if (i === "") { alert("Please select an article from the dropdown first."); return; }
+    if (i === "") {
+      document.getElementById("article").value = "";
+      sentences.length = 0;
+      sectionIndex.length = 0;
+      sectionTitles = [];
+      idx = 0;
+      currentArticleId = "";
+      isRepeatMode = false;
+      repeatModeIds = [];
+      fullSentences = [];
+      fullSectionIndex = [];
+      document.getElementById("exitRepeatBtn").style.display = "none";
+      loadCheckHistory("");
+      loadRepeatList("");
+      fillSectionDropdown();
+      renderSentence();
+      updateDictationControls();
+      document.getElementById("result").style.display = "none";
+      document.getElementById("input").value = "";
+      renderSidebar();
+      return;
+    }
     const a = articleList[parseInt(i, 10)];
     if (!a) { alert("Article not found."); return; }
     if (a.content) {
@@ -1192,6 +1257,15 @@
 
   document.getElementById("historyExportBtn").onclick = exportHistory;
 
+  (function() {
+    const overlay = document.getElementById("helpOverlay");
+    const closeBtn = document.getElementById("helpClose");
+    document.getElementById("helpBtn").onclick = () => { overlay.classList.add("open"); overlay.setAttribute("aria-hidden", "false"); };
+    function closeHelp() { overlay.classList.remove("open"); overlay.setAttribute("aria-hidden", "true"); }
+    if (closeBtn) closeBtn.onclick = closeHelp;
+    overlay.onclick = (e) => { if (e.target === overlay) closeHelp(); };
+  })();
+
   document.getElementById("clearContent").onclick = () => {
     document.getElementById("article").value = "";
     sentences.length = 0;
@@ -1203,15 +1277,10 @@
     fullSentences = [];
     fullSectionIndex = [];
     document.getElementById("exitRepeatBtn").style.display = "none";
-    const prevId = currentArticleId;
-    stats.total = 0;
-    stats.sumAcc = 0;
-    stats.wrongWords = {};
-    checkHistory.length = 0;
     repeatPracticeIds = [];
     currentArticleId = "";
     playReplayCountForCurrentSentence = 0;
-    clearArticleStorage(prevId);
+    // 只清空文章與載入狀態，不清除 History 與 Score stats
     renderSidebar();
     document.getElementById("articleSelect").value = "";
     fillSectionDropdown();
@@ -1287,11 +1356,15 @@
 
   document.getElementById("reveal").onclick = () => {
     const box = document.getElementById("sentenceBox");
-    box.classList.remove("hiddenText");
-    box.style.display = "";
+    const isHidden = box.classList.contains("hiddenText") || box.style.display === "none";
+    if (isHidden) {
+      box.classList.remove("hiddenText");
+      box.style.display = "";
+    } else {
+      box.classList.add("hiddenText");
+      box.style.display = "none";
+    }
   };
-
-  document.getElementById("hideText").addEventListener("change", renderSentence);
 
   document.getElementById("toggleChapterText").onclick = () => {
     const panel = document.getElementById("chapterTextBox");
@@ -1339,7 +1412,7 @@
   });
 
   document.getElementById("check").onclick = () => {
-    const strict = document.getElementById("strict").checked;
+    const strict = false;
     const ref = currentSentence();
     const hyp = document.getElementById("input").value;
 
