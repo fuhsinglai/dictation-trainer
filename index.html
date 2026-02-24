@@ -6,11 +6,16 @@
   <title>English Dictation Trainer</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
   <style>
+    /* Paste or load article：只調這兩個（最小寬度、與其他三張的比例） */
+    :root { --card-article-min: 680px; --card-article-flex: 12; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; padding: 0 16px; }
-    .app-layout { display: flex; gap: 24px; max-width: 1200px; margin: 24px auto; align-items: flex-start; }
-    .main { flex: 1; min-width: 0; max-width: 900px; }
-    .sidebar { width: 260px; flex-shrink: 0; position: sticky; top: 24px; }
-    .sidebar .card { margin-top: 10px; }
+    .app-layout { display: flex; flex-direction: row; gap: 24px; width: 100%; max-width: min(1400px, 96vw); margin: 24px auto; align-items: flex-start; box-sizing: border-box; }
+    .main { flex: 1; min-width: 0; max-width: 100%; }
+    .sidebar { width: min(840px, 65vw); min-width: 260px; flex-shrink: 0; position: sticky; top: 24px; display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+    .sidebar .card { margin-top: 10px; flex: 1 1 0; min-width: 120px; }
+    #cardArticle { flex: var(--card-article-flex) 1 0; min-width: var(--card-article-min); }
+    #historyCard { flex: 1 1 100%; min-width: 0; }
+    #cardArticle #article { min-height: 420px; }
     .card-collapsible .card-head { cursor: pointer; user-select: none; margin: 0; padding: 2px 0 10px 0; display: flex; align-items: center; justify-content: space-between; }
     .card-collapsible .card-head:hover { color: #0066cc; }
     .card-collapsible .card-head::after { content: "▼"; font-size: 10px; opacity: .7; transition: transform .2s; }
@@ -33,13 +38,9 @@
     .history-detail.open { display: block; }
     .stats-row { font-size: 14px; padding: 6px 0; }
     .stats-row strong { display: inline-block; min-width: 6em; }
-    @media (max-width: 900px) {
-      .app-layout { flex-direction: column; }
-      .sidebar { width: 100%; position: static; display: flex; flex-wrap: wrap; gap: 10px; }
-      .sidebar .card { flex: 1; min-width: 200px; }
-    }
     textarea, input { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
     textarea { min-height: 120px; }
+    #input { font-size: 24px; line-height: 1.5; color: #2563eb; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     button, select { padding: 8px 14px; font-size: 14px; border-radius: 8px; border: 1px solid #ccc; background: #f8f8f8; cursor: pointer; transition: background .15s, border-color .15s; }
     button:hover, select:hover { background: #eee; border-color: #bbb; }
@@ -53,6 +54,7 @@
     .history-item.low-accuracy .history-header { font-weight: 500; }
     .history-low-badge { font-size: 10px; color: #dc2626; margin-left: 6px; }
     .practice-again-btn { font-size: 11px; padding: 4px 10px; margin-top: 4px; }
+    .section-repeat-btn:hover { background: #fee2e2; }
     .repeat-go { color: #0066cc; text-decoration: none; }
     .repeat-go:hover { text-decoration: underline; }
     .playback-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; background: #f5f5f5; border-radius: 10px; border: 1px solid #eee; }
@@ -65,30 +67,117 @@
     .progress-wrap { display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle; }
     .progress-track { width: 80px; height: 8px; background: #e8e8e8; border-radius: 4px; overflow: hidden; }
     .progress-fill { height: 100%; background: #0066cc; border-radius: 4px; transition: width .2s ease; }
+    .dictation-area { display: flex; gap: 0; border: 2px solid #22c55e; border-radius: 12px; overflow: hidden; margin-top: 10px; }
+    .dictation-controls { width: 140px; flex-shrink: 0; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 16px; border-right: 2px solid #22c55e; background: #fafafa; }
+    .dictation-controls .nav-buttons { display: flex; gap: 8px; }
+    .dictation-controls .btn-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; }
+    .dictation-controls .btn-circle:hover { background: #dcfce7; }
+    .dictation-controls .btn-play { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #22c55e; background: #fff; cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; padding: 0; color: #2563eb; }
+    .dictation-controls .btn-play:hover { background: #dcfce7; }
+    .dictation-controls .speed-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+    .dictation-controls .speed-wrap { width: 100%; }
+    .speed-slider-wrap { display: flex; align-items: center; gap: 10px; }
+    .speed-track-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .speed-slider-wrap input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; appearance: none; background: #e5e7eb; border-radius: 3px; }
+    .speed-slider-wrap input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #22c55e; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .speed-slider-wrap input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #22c55e; cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .speed-ticks { position: relative; height: 8px; margin: 0 8px; }
+    .speed-ticks span { position: absolute; width: 2px; height: 6px; background: #9ca3af; border-radius: 1px; top: 0; transform: translateX(-50%); }
+    .speed-ticks span:nth-child(1){ left: 0%; }
+    .speed-ticks span:nth-child(2){ left: 18.75%; }
+    .speed-ticks span:nth-child(3){ left: 37.5%; }
+    .speed-ticks span:nth-child(4){ left: 56.25%; }
+    .speed-ticks span:nth-child(5){ left: 75%; }
+    .speed-ticks span:nth-child(6){ left: 100%; }
+    .speed-value { font-size: 12px; color: #374151; min-width: 2.8em; font-variant-numeric: tabular-nums; }
+    .dictation-controls .btn-circle svg, .dictation-controls .btn-play svg { width: 20px; height: 20px; fill: currentColor; }
+    .dictation-controls .btn-play svg { width: 24px; height: 24px; }
+    .dictation-controls-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px 14px; border-radius: 999px; border: 2px solid #22c55e; background: #fff; color: #166534; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .dictation-controls-btn:hover { background: #dcfce7; }
+    .dictation-controls-btn svg { flex-shrink: 0; }
+    .dictation-controls .dictation-btn-play-section { margin-top: auto; }
+    .btn-icon { display: inline-flex; align-items: center; gap: 6px; }
+    .btn-icon svg { width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
+    .dictation-content { flex: 1; min-width: 0; padding: 16px; border-left: none; display: flex; flex-direction: column; gap: 12px; }
+    .dictation-content .top-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .dictation-content .voice-wrap { display: flex; align-items: center; gap: 8px; }
+    .dictation-content .progress-row { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    #sentenceBox.dictation-sentence-box { min-height: 60px; border-radius: 8px; padding: 10px; background: #f0f0f0; color: #111; }
+    #sentenceBox.dictation-sentence-box.hiddenText { background: #000; color: #000; }
   </style>
 </head>
 <body>
   <div class="app-layout">
   <div class="main">
-  <h1>English Dictation Trainer</h1>
-  <p class="muted">
-    Uses browser built-in TTS (speechSynthesis). Best on Chrome/Edge. Paste an article, then practice one sentence at a time.
-  </p>
+    <h2>English Dictation Trainer</h2>
+  <div class="card">
+    <h3> Dictation </h3>
+    <div class="dictation-area">
+      <div class="dictation-controls">
+        <div class="nav-buttons">
+          <button type="button" id="prev" class="btn-circle" title="Alt + ←"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+          <button type="button" id="next" class="btn-circle" title="Alt + →"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+        </div>
+        <button type="button" id="play" class="btn-play" title="Alt + P"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg></button>
+        <div class="speed-wrap">
+          <div class="speed-label">Speed</div>
+          <div class="speed-slider-wrap">
+            <div class="speed-track-wrap">
+              <input type="range" id="rate" min="0.7" max="1.5" step="0.05" value="1" title="Speech rate">
+              <div class="speed-ticks" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <span id="rateValue" class="speed-value">1.0×</span>
+          </div>
+        </div>
+        <button type="button" id="playSection" class="dictation-controls-btn dictation-btn-play-section" title="Play entire current section"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>Play section</span></button>
+      </div>
+      <div class="dictation-content">
+        <div class="top-row">
+          <div class="voice-wrap">
+            <span class="muted">Voice</span>
+            <select id="voice"></select>
+          </div>
+          <div class="progress-row">
+            <span class="badge" id="idxBadge">Sentence 0 / 0</span>
+            <div class="progress-wrap" id="sentenceProgressWrap" style="display:none;">
+              <div class="progress-track"><div class="progress-fill" id="sentenceProgressFill"></div></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <textarea id="input" placeholder="Type your dictation here ..."></textarea>
+          <div id="sentenceBox" class="card dictation-sentence-box"></div>
+          <br>
+          <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-bottom:6px;">Show section</button>
+          <div id="chapterTextBox" class="card muted" style="margin-top:6px; display:none; white-space:pre-wrap; max-height:200px; overflow:auto;"></div>
+        </div>
+        <div class="row">
+          <button id="check" class="btn-icon" title="Check (Ctrl+Enter)"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Check</button>
+          <button id="reveal" class="btn-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> Reveal Answer</button>
+          <button id="clear" class="btn-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Clear Input</button>
+        </div>
+      </div>
+    </div>
+    <div id="result" class="card" style="display:none;"></div>
+  </div>
 
-  <div class="card card-collapsible" id="cardArticle">
-    <h3 class="card-head">1) Paste or load article</h3>
-    <div class="card-body">
-      <div class="row" style="margin-bottom:8px; align-items:center;">
-        <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
-          <span style="min-width:6.5em; text-align:right;">Select article</span>
-          <select id="articleSelect" style="min-width:200px;">
-            <option value="">— Select or paste below —</option>
-          </select>
-        </label>
-        <button type="button" id="loadSelected">Load</button>
-        <span class="muted" style="font-size:12px;">or</span>
-        <label class="muted" style="cursor:pointer;">
-          <input type="file" id="txtFile" accept=".txt" style="display:none;" />
+  <aside class="sidebar">
+    <div class="card card-collapsible card-article" id="cardArticle">
+      <h3 class="card-head"> Paste or load article </h3>
+      <div class="card-body">
+        <div class="row" style="margin-bottom:8px; align-items:center;">
+          <label class="muted" style="display:inline-flex; align-items:center; gap:8px;">
+            <span style="min-width:6.5em; text-align:right;">Select article</span>
+            <select id="articleSelect" style="min-width:200px;">
+              <option value="">— Select or paste below —</option>
+            </select>
+          </label>
+          <button type="button" id="loadSelected">Load</button>
+          <span class="muted" style="font-size:12px;">or</span>
+          <label class="muted" style="cursor:pointer;">
+            <input type="file" id="txtFile" accept=".txt" style="display:none;" />
 <button type="button" id="pickTxt">Select .txt file</button>
       </label>
       </div>
@@ -112,78 +201,13 @@
       <p class="muted" style="margin-top:6px; font-size:12px;">Notion formatting is auto-cleaned; you can overwrite .txt in materials after download.</p>
     </div>
   </div>
-
-  <div class="card">
-    <h3>2) Dictation</h3>
-    <div class="row" style="align-items: center;">
-      <div class="playback-group">
-        <button id="prev" title="Alt + ← ">◀ Prev</button>
-        <button id="play" title="Alt + P ">🔊 Play</button>
-        <button id="again" title="Alt + R ">🔁 Replay</button>
-        <button id="next" title="Alt + → ">Next ▶</button>
-      </div>
-
-      <label class="muted">Speed
-        <select id="rate">
-            <option value="0.7">Very Slow</option>
-            <option value="0.85">Slow</option>
-            <option value="1">Normal</option>
-            <option value="1.15">Fast</option>
-            <option value="1.3">Very Fast</option>
-            <option value="1.5">Extremely Fast</option>
-        </select>
-      </label>
-
-      <label class="muted">Voice
-        <select id="voice"></select>
-      </label>
-      <span class="badge" id="idxBadge">Sentence 0 / 0</span>
-      <div class="progress-wrap" id="sentenceProgressWrap" style="display:none;">
-        <div class="progress-track"><div class="progress-fill" id="sentenceProgressFill"></div></div>
-      </div>
-      <button type="button" id="playSection" title="Play entire current section">▶ Play section</button>
-    </div>
-
-    <div style="margin-top:10px;">
-      <div class="row" style="align-items:center;">
-        <span class="muted">Sentence (may be hidden):</span>
-        <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-left:8px;">Show section</button>
-      </div>
-      <div id="sentenceBox" class="card" style="margin-top:6px;"></div>
-      <div id="chapterTextBox" class="card muted" style="margin-top:6px; display:none; white-space:pre-wrap; max-height:200px; overflow:auto;"></div>
-    </div>
-
-    <div style="margin-top:10px;">
-      <div class="muted">Type what you heard:</div>
-      <textarea id="input" placeholder="Type your dictation here..."></textarea>
-      <div class="row" style="margin-top:10px;">
-        <button id="check" title="Check (Ctrl+Enter)">✅ Check</button>
-        <button id="reveal">👁 Reveal Answer</button>
-        <button id="clear">🧹 Clear Input</button>
-      </div>
-    </div>
-
-    <div id="result" class="card" style="display:none;"></div>
-  </div>
-
-  <aside class="sidebar">
     <div class="card">
-      <h4 style="margin:0 0 10px 0;">Score stats</h4>
+      <h4 style="margin:0 0 10px 0;">Score stats <span id="statsSectionLabel" class="muted" style="font-weight:normal; font-size:12px;"></span></h4>
       <div id="statsPanel">
         <div class="stats-row"><strong>Checked:</strong> <span id="statCount">0</span></div>
         <div class="stats-row"><strong>Average:</strong> <span id="statAvg">—</span></div>
         <div class="stats-row muted" style="font-size:12px; margin-top:8px;">Most wrong: <span id="statWrong">—</span></div>
       </div>
-    </div>
-    <div class="card">
-      <h4 style="margin:0 0 8px 0;">History</h4>
-      <div id="repeatPracticePanel" style="display:none; margin-bottom:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:12px;"></div>
-      <div class="row" style="margin-bottom:8px;">
-        <label class="muted" style="font-size:12px;">Mark as review below:</label>
-        <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="準確率低於此%視為需重練" />
-        <span class="muted" style="font-size:12px;">%</span>
-      </div>
-      <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
     </div>
     <div class="card">
       <h4 style="margin:0 0 10px 0;">Learning stats</h4>
@@ -198,6 +222,19 @@
           <button type="button" id="clearScores" class="muted" style="font-size:12px;">Clear records</button>
         </div>
       </div>
+    </div>
+    <div class="card" id="historyCard">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+        <h4 style="margin:0;">History <span id="historySectionLabel" class="muted" style="font-weight:normal; font-size:12px;"></span></h4>
+        <button type="button" id="historyExportBtn" class="muted" style="font-size:12px; padding:4px 10px;">Export</button>
+      </div>
+      <div id="repeatPracticePanel" style="display:none; margin-bottom:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:12px;"></div>
+      <div class="row" style="margin-bottom:8px;">
+        <label class="muted" style="font-size:12px;">Mark as review below:</label>
+        <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="準確率低於此%視為需重練" />
+        <span class="muted" style="font-size:12px;">%</span>
+      </div>
+      <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
     </div>
   </aside>
   </div>
@@ -324,13 +361,27 @@
   document.getElementById("voice").addEventListener("change", function() {
     localStorage.setItem("dictationTrainer_voice", this.value);
   });
+  function updateRateDisplay() {
+    var r = document.getElementById("rate");
+    var v = document.getElementById("rateValue");
+    if (r && v) { v.textContent = parseFloat(r.value).toFixed(1) + "×"; }
+  }
+  document.getElementById("rate").addEventListener("input", function() {
+    localStorage.setItem("dictationTrainer_speed", this.value);
+    updateRateDisplay();
+  });
   document.getElementById("rate").addEventListener("change", function() {
     localStorage.setItem("dictationTrainer_speed", this.value);
+    updateRateDisplay();
   });
   var savedSpeed = localStorage.getItem("dictationTrainer_speed");
-  if (savedSpeed && document.querySelector("#rate option[value=\"" + savedSpeed + "\"]")) {
-    document.getElementById("rate").value = savedSpeed;
+  if (savedSpeed) {
+    var num = parseFloat(savedSpeed);
+    if (!isNaN(num) && num >= 0.7 && num <= 1.5) {
+      document.getElementById("rate").value = savedSpeed;
+    }
   }
+  updateRateDisplay();
 
   function speak(text) {
     if (!text) return;
@@ -385,6 +436,7 @@
   // ---------- App state ----------
   let sentences = [];
   let sectionIndex = [];  // which section each sentence belongs to (0-based), split by blank lines
+  let sectionTitles = [];  // optional display name per section (first sentence preview, max 25 chars)
   let idx = 0;
   let articleList = [];  // from articles.json or uploaded JSON
   const stats = { total:0, sumAcc:0, wrongWords:{} };
@@ -480,18 +532,20 @@
     saveRepeatList();
   }
 
-  function enterRepeatMode() {
+  function enterRepeatMode(onlySectionIds) {
     if (!sentences.length) return;
     fullSentences = sentences.slice();
     fullSectionIndex = sectionIndex.slice();
-    // 合併：手動加入的重複練習 + History 中低於門檻的「建議重練」句子
-    const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
-    const idSet = new Set(repeatPracticeIds);
-    checkHistory.forEach(h => {
-      if (h.accPct >= threshold) return;
-      const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
-      if (sid && parseIndexFromId(sid) >= 0) idSet.add(sid);
-    });
+    const idSet = new Set(onlySectionIds && onlySectionIds.length ? onlySectionIds : repeatPracticeIds);
+    if (!onlySectionIds || onlySectionIds.length === 0) {
+      // 合併：手動加入的重複練習 + History 中低於門檻的「建議重練」句子
+      const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+      checkHistory.forEach(h => {
+        if (h.accPct >= threshold) return;
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+        if (sid && parseIndexFromId(sid) >= 0) idSet.add(sid);
+      });
+    }
     const validIds = Array.from(idSet).filter(id => {
       const i = parseIndexFromId(id);
       return i >= 0 && fullSentences[i] !== undefined;
@@ -507,9 +561,12 @@
     document.getElementById("exitRepeatBtn").style.display = "";
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
-    fillSectionDropdown();
+    // 不更動章節下拉選單，只改 Dictation 的句子來源
     renderSentence();
     updateDictationControls();
+    window.scrollTo(0, 0);
+    const inputEl = document.getElementById("input");
+    if (inputEl) inputEl.focus();
   }
 
   function exitRepeatMode() {
@@ -532,76 +589,148 @@
   }
 
   function renderSidebar() {
-    document.getElementById("statCount").textContent = stats.total;
-    document.getElementById("statAvg").textContent = stats.total
-      ? Math.round((stats.sumAcc / stats.total) * 100) + "%"
-      : "—";
-    const topWrong = Object.entries(stats.wrongWords)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,5)
-      .map(([w,c])=>`${w} (${c})`)
-      .join(", ") || "—";
-    document.getElementById("statWrong").textContent = topWrong;
+    const sectionSel = document.getElementById("sectionSelect");
+    const filterSec = sectionSel && sectionSel.value !== "all" && sectionSel.value !== "repeat" ? parseInt(sectionSel.value, 10) : null;
+    const isFilterBySection = filterSec !== null && !isNaN(filterSec);
+    const filteredHistory = isFilterBySection
+      ? checkHistory.filter(h => (h.sectionIndex ?? 0) === filterSec)
+      : checkHistory;
+
+    const sectionLabel = isFilterBySection ? "(Section " + (filterSec + 1) + ")" : "";
+    document.getElementById("statsSectionLabel").textContent = sectionLabel;
+    document.getElementById("historySectionLabel").textContent = "";
+
+    if (isFilterBySection) {
+      document.getElementById("statCount").textContent = filteredHistory.length;
+      document.getElementById("statAvg").textContent = filteredHistory.length
+        ? Math.round(filteredHistory.reduce((s, h) => s + h.accPct, 0) / filteredHistory.length) + "%"
+        : "—";
+      document.getElementById("statWrong").textContent = "—";
+    } else {
+      document.getElementById("statCount").textContent = stats.total;
+      document.getElementById("statAvg").textContent = stats.total
+        ? Math.round((stats.sumAcc / stats.total) * 100) + "%"
+        : "—";
+      const topWrong = Object.entries(stats.wrongWords)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5)
+        .map(([w,c])=>`${w} (${c})`)
+        .join(", ") || "—";
+      document.getElementById("statWrong").textContent = topWrong;
+    }
 
     const listEl = document.getElementById("historyList");
-    if (checkHistory.length === 0) {
-      listEl.innerHTML = '<span class="muted">No checks yet.</span>';
-      return;
-    }
-    const reversed = checkHistory.slice().reverse();
-    const total = checkHistory.length;
-    const avg = total ? Math.round(checkHistory.reduce((s, h) => s + h.accPct, 0) / total) : 0;
-    const seen = new Set();
-    const deduped = reversed.filter(h => {
-      const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + h.sentenceNum);
-      if (seen.has(sid)) return false;
-      seen.add(sid);
-      return true;
-    });
-    const maxShow = 15;
-    const showAll = listEl.dataset.historyShowAll === "1";
-    const toShow = showAll ? deduped : deduped.slice(0, maxShow);
-    const hasMore = deduped.length > maxShow && !showAll;
-    const moreCount = deduped.length - maxShow;
+    const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
     function accClass(pct) {
       if (pct >= 90) return "high";
       if (pct >= 70) return "mid";
       return "low";
     }
-    let html = `<div class="history-summary">${total} checks · ${avg}% avg</div>`;
-    html += toShow.map((h, i) => {
-      const id = "hist-detail-" + i;
+    function renderHistoryItem(h, detailId, posInSection, totalInSection) {
       const accCls = accClass(h.accPct);
-      const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
       const isLow = h.accPct < threshold;
       const lowClass = isLow ? " low-accuracy" : "";
       const lowBadge = isLow ? "<span class=\"history-low-badge\">&lt;" + threshold + "% 建議重練</span>" : "";
       const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + (h.sentenceNum || 0));
+      const num = totalInSection != null && posInSection != null ? posInSection : h.sentenceNum;
+      const den = totalInSection != null ? totalInSection : h.totalSentences;
       return `<div class="history-item${lowClass}">
-        <div class="history-header" onclick="document.getElementById('${id}').classList.toggle('open')">
-          <span>#${h.sentenceNum}/${h.totalSentences}${lowBadge}</span>
+        <div class="history-header" onclick="document.getElementById('${detailId}').classList.toggle('open')">
+          <span>#${num}/${den}${lowBadge}</span>
           <span class="history-acc ${accCls}">${h.accPct}%</span>
         </div>
-        <div id="${id}" class="history-detail">
+        <div id="${detailId}" class="history-detail">
           <div class="diff" style="margin:6px 0; line-height:1.6; font-size:12px;">${h.diffHtml || ""}</div>
           <div class="muted" style="font-size:11px;"><b>Tip:</b> ${h.tip || ""}</div>
           ${isLow ? `<div style="margin-top:8px;"><button type="button" class="practice-again-btn" data-sid="${sid.replace(/"/g, '&quot;')}">▶ 重練此句</button></div>` : ""}
         </div>
       </div>`;
-    }).join("");
-    if (hasMore) {
-      html += `<div class="history-more" id="historyShowMore">Show more (${moreCount})</div>`;
-    } else if (showAll && deduped.length > maxShow) {
-      html += `<div class="history-more" id="historyShowMore">Show less</div>`;
     }
+
+    if (checkHistory.length === 0) {
+      listEl.innerHTML = '<span class="muted">No checks yet.</span>';
+      renderRepeatList();
+      return;
+    }
+    // 重練模式下 sectionIndex 已被改成全 0，用 fullSectionIndex 才能顯示所有 section 區塊
+    const effectiveSectionIndex = (isRepeatMode && fullSectionIndex.length) ? fullSectionIndex : sectionIndex;
+    const numSections = effectiveSectionIndex.length ? Math.max(...effectiveSectionIndex) + 1 : 0;
+    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(h => h.sectionIndex ?? 0))].sort((a, b) => a - b);
+    const maxShowPerSection = 12;
+    let html = "";
+    sectionNumbers.forEach((sec, secIdx) => {
+      if (secIdx > 0) html += "<hr style=\"margin:14px 0; border:0; border-top:1px solid #e5e7eb;\">";
+      const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const lowInSec = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec && h.accPct < threshold);
+        const hasLow = lowInSec.length > 0;
+        const repeatBtnHtml = hasLow ? `<button type="button" class="section-repeat-btn" data-sec="${sec}" style="flex-shrink:0; font-size:12px; padding:4px 10px; border-radius:6px; border:1px solid #dc2626; background:#fef2f2; color:#dc2626; cursor:pointer;">Re-practice low</button>` : "";
+      if (secHistory.length === 0) {
+        html += `<div class="history-section-block" style="margin-bottom:14px;"><div class="history-section-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151;">Section ${sec + 1}</div>${repeatBtnHtml}</div><span class="muted" style="font-size:12px;">No checks yet.</span></div>`;
+        return;
+      }
+      const reversed = secHistory.slice().reverse();
+      const seen = new Set();
+      const deduped = reversed.filter(h => {
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + h.sentenceNum);
+        if (seen.has(sid)) return false;
+        seen.add(sid);
+        return true;
+      });
+      const count = deduped.length;
+      const avg = count ? Math.round(deduped.reduce((s, h) => s + h.accPct, 0) / count) : 0;
+      const showAllKey = "historySec" + sec + "ShowAll";
+      const showAll = listEl.dataset[showAllKey] === "1";
+      const toShow = showAll ? deduped : deduped.slice(0, maxShowPerSection);
+      const hasMore = deduped.length > maxShowPerSection && !showAll;
+      const moreCount = deduped.length - maxShowPerSection;
+      const sectionName = "Section " + (sec + 1);
+      const sectionSentenceIndices = effectiveSectionIndex.map((s, i) => s === sec ? i : -1).filter(i => i >= 0);
+      const totalInSection = sectionSentenceIndices.length;
+      html += `<div class="history-section-block" style="margin-bottom:14px;">`;
+      html += `<div class="history-section-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151;">${sectionName} — ${count} checks · ${avg}% avg</div>${repeatBtnHtml}</div>`;
+      toShow.forEach((h, i) => {
+        const detailId = "hist-detail-sec" + sec + "-" + i;
+        const globalIndex0 = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
+        const posInSection = sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum;
+        html += renderHistoryItem(h, detailId, posInSection, totalInSection);
+      });
+      if (hasMore) {
+        html += `<div class="history-more history-more-sec" data-sec="${sec}" id="historyShowMoreSec${sec}">Show more (${moreCount})</div>`;
+      } else if (showAll && deduped.length > maxShowPerSection) {
+        html += `<div class="history-more history-more-sec" data-sec="${sec}" id="historyShowMoreSec${sec}">Show less</div>`;
+      }
+      html += `</div>`;
+    });
     listEl.innerHTML = html;
-    const moreEl = document.getElementById("historyShowMore");
-    if (moreEl) {
-      moreEl.onclick = () => {
-        listEl.dataset.historyShowAll = showAll ? "0" : "1";
+    listEl.querySelectorAll(".history-more-sec").forEach(el => {
+      const sec = el.getAttribute("data-sec");
+      el.onclick = () => {
+        const key = "historySec" + sec + "ShowAll";
+        listEl.dataset[key] = listEl.dataset[key] === "1" ? "0" : "1";
         renderSidebar();
       };
-    }
+    });
+    listEl.querySelectorAll(".section-repeat-btn").forEach(btn => {
+      btn.onclick = function() {
+        const sec = parseInt(this.getAttribute("data-sec"), 10);
+        if (isNaN(sec)) return;
+        const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+        const lowInSection = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec && h.accPct < th);
+        const seen = new Set();
+        const sectionIds = [];
+        lowInSection.forEach(h => {
+          const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+          if (sid && parseIndexFromId(sid) >= 0 && !seen.has(sid)) {
+            seen.add(sid);
+            sectionIds.push(sid);
+          }
+        });
+        sectionIds.sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
+        if (sectionIds.length === 0) return;
+        enterRepeatMode(sectionIds);
+        renderSidebar();
+      };
+    });
     listEl.querySelectorAll(".practice-again-btn").forEach(btn => {
       btn.onclick = function() {
         const sid = this.getAttribute("data-sid");
@@ -666,6 +795,55 @@
     };
     const startRepeatBtn = document.getElementById("startRepeatBtn");
     if (startRepeatBtn) startRepeatBtn.onclick = enterRepeatMode;
+  }
+
+  function exportHistory() {
+    if (checkHistory.length === 0) return;
+    const effectiveSectionIndex = (isRepeatMode && fullSectionIndex.length) ? fullSectionIndex : sectionIndex;
+    const fullSentencesSource = isRepeatMode && fullSentences.length ? fullSentences : sentences;
+    const numSections = effectiveSectionIndex.length ? Math.max(...effectiveSectionIndex) + 1 : 0;
+    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(h => h.sectionIndex ?? 0))].sort((a, b) => a - b);
+    const sections = [];
+    sectionNumbers.forEach(sec => {
+      const sectionSentenceIndices = effectiveSectionIndex.length ? effectiveSectionIndex.map((s, i) => s === sec ? i : -1).filter(i => i >= 0) : [];
+      const totalInSection = sectionSentenceIndices.length;
+      const originalText = sectionSentenceIndices.map(i => fullSentencesSource[i]).filter(Boolean).join(" ") || "";
+      const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const items = [];
+      secHistory.forEach(h => {
+        const globalIndex0 = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
+        const posInSection = totalInSection ? (sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum) : h.sentenceNum;
+        const reference = fullSentencesSource[globalIndex0] || "";
+        items.push({
+          sentence: posInSection,
+          total: totalInSection,
+          accuracyPct: h.accPct,
+          reference,
+          userText: h.userText ?? "",
+          errors: h.errors ?? [],
+          diffHtml: h.diffHtml || ""
+        });
+      });
+      sections.push({
+        section: "Section " + (sec + 1),
+        originalText,
+        items
+      });
+    });
+    const payload = {
+      _for: "AI analysis",
+      _purpose: "Analyze errors to identify weaknesses (e.g. spelling, liaison/connected speech, missing/extra words); then generate targeted practice articles.",
+      _schema: "items[].reference=correct sentence; items[].userText=what user typed; items[].errors[]: del=missing word, ins=extra word, sub=substitution (ref→user, may be spelling or 連音); items[].accuracyPct=0-100",
+      exportedAt: new Date().toISOString(),
+      sections
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "history-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   function renderLearningStats() {
@@ -734,12 +912,13 @@
       return;
     }
     row.style.display = "";
-    const chNames = ["Section 1", "Section 2", "Section 3", "Section 4", "Section 5", "Section 6", "Section 7", "Section 8", "Section 9", "Section 10"];
+    sel.appendChild(new Option("All sections", "all"));
     for (let i = 0; i < numSections; i++) {
-      const name = chNames[i] || `Section ${i + 1}`;
+      const custom = sectionTitles[i];
+      const name = (custom && custom.trim()) ? `Section ${i + 1}: ${custom}` : `Section ${i + 1}`;
       sel.appendChild(new Option(name, String(i)));
     }
-    sel.value = sectionIndex[idx] !== undefined ? String(sectionIndex[idx]) : "0";
+    sel.value = sectionIndex[idx] !== undefined ? String(sectionIndex[idx]) : "all";
   }
 
   function updateDictationControls() {
@@ -747,7 +926,7 @@
     if (!on) {
       if (sectionPlaying) { speechSynthesis.cancel(); setPlaySectionButtonLabel(false); }
     }
-    ["prev", "play", "again", "next", "playSection", "check", "reveal", "clear", "toggleChapterText", "sectionSelect"].forEach(id => {
+    ["prev", "play", "next", "playSection", "check", "reveal", "clear", "toggleChapterText", "sectionSelect"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.disabled = !on;
     });
@@ -758,13 +937,19 @@
     const hide = document.getElementById("hideText").checked;
     const box = document.getElementById("sentenceBox");
     const s = currentSentence();
-    box.className = "card";
+    box.className = "card dictation-sentence-box";
     box.textContent = s ? s : "(No sentences loaded)";
-    if (hide && s) box.classList.add("hiddenText");
+    if (hide && s) {
+      box.classList.add("hiddenText");
+      box.style.display = "none";
+    } else {
+      box.classList.remove("hiddenText");
+      box.style.display = "";
+    }
     const total = sentences.length;
     const sec = sectionIndex[idx];
     const sectionSelect = document.getElementById("sectionSelect");
-    if (sectionSelect.options.length > 1 && sec !== undefined) sectionSelect.value = String(sec);
+    if (sectionSelect.options.length > 1 && sec !== undefined && sectionSelect.value !== "all") sectionSelect.value = String(sec);
     const progressWrap = document.getElementById("sentenceProgressWrap");
     const progressFill = document.getElementById("sentenceProgressFill");
     let currentNum = 0, totalNum = 0;
@@ -815,6 +1000,18 @@
     const v = document.getElementById("sectionSelect").value;
     if (v === "") return;
     localStorage.setItem("dictationTrainer_section", v);
+    if (v === "all") {
+      idx = 0;
+      document.getElementById("result").style.display = "none";
+      document.getElementById("input").value = "";
+      renderSentence();
+      renderSidebar();
+      var panel = document.getElementById("chapterTextBox");
+      if (panel.style.display === "block" && sentences.length) {
+        panel.textContent = sentences.join(" ");
+      }
+      return;
+    }
     const sec = parseInt(v, 10);
     if (isNaN(sec)) return;
     const firstIdx = sectionIndex.indexOf(sec);
@@ -823,6 +1020,7 @@
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     renderSentence();
+    renderSidebar();
     var panel = document.getElementById("chapterTextBox");
     if (panel.style.display === "block") {
       var chapterSentences = sentences.filter(function(_, i) { return sectionIndex[i] === sec; });
@@ -877,20 +1075,25 @@
   // Split by blank lines into sections, then split each section into sentences
   function splitIntoSectionedSentences(rawText) {
     const paragraphs = rawText.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
-    if (paragraphs.length === 0) return { sentences: [], sectionIndex: [] };
+    if (paragraphs.length === 0) return { sentences: [], sectionIndex: [], sectionTitles: [] };
     const sections = paragraphs.map(p => splitSentences(cleanNotionText(p)));
     const sentences = sections.flat();
     const sectionIndex = sections.flatMap((sents, i) => sents.map(() => i));
-    return { sentences, sectionIndex };
+    const sectionTitles = sections.map(sents => {
+      const first = (sents[0] || "").trim();
+      return first.length > 25 ? first.slice(0, 25) + "…" : first || "";
+    });
+    return { sentences, sectionIndex, sectionTitles };
   }
 
   function loadArticleAndSplit() {
     const raw = document.getElementById("article").value;
-    const { sentences: s, sectionIndex: si } = splitIntoSectionedSentences(raw);
+    const { sentences: s, sectionIndex: si, sectionTitles: st } = splitIntoSectionedSentences(raw);
     sentences.length = 0;
     sentences.push(...s);
     sectionIndex.length = 0;
     sectionIndex.push(...si);
+    sectionTitles = st || [];
     idx = 0;
     playReplayCountForCurrentSentence = 0;
     const sel = document.getElementById("articleSelect").value;
@@ -987,10 +1190,13 @@
     reader.readAsText(f, "utf-8");
   };
 
+  document.getElementById("historyExportBtn").onclick = exportHistory;
+
   document.getElementById("clearContent").onclick = () => {
     document.getElementById("article").value = "";
     sentences.length = 0;
     sectionIndex.length = 0;
+    sectionTitles = [];
     idx = 0;
     isRepeatMode = false;
     repeatModeIds = [];
@@ -1066,7 +1272,6 @@
     const s = currentSentence();
     if (s) { playReplayCountForCurrentSentence++; speak(s); }
   }
-  document.getElementById("again").onclick = playAgain;
   document.getElementById("exitRepeatBtn").onclick = exitRepeatMode;
 
   // Playback hotkeys (work while typing in textarea)
@@ -1083,7 +1288,10 @@
   document.getElementById("reveal").onclick = () => {
     const box = document.getElementById("sentenceBox");
     box.classList.remove("hiddenText");
+    box.style.display = "";
   };
+
+  document.getElementById("hideText").addEventListener("change", renderSentence);
 
   document.getElementById("toggleChapterText").onclick = () => {
     const panel = document.getElementById("chapterTextBox");
@@ -1105,6 +1313,30 @@
   document.getElementById("clear").onclick = () => {
     document.getElementById("input").value = "";
   };
+
+  // 打字音效（Web Audio，無需外部檔案）
+  let typingAudioCtx = null;
+  function playTypingSound() {
+    try {
+      if (!typingAudioCtx) typingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (typingAudioCtx.state === "suspended") typingAudioCtx.resume();
+      const osc = typingAudioCtx.createOscillator();
+      const gain = typingAudioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(typingAudioCtx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(720, typingAudioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, typingAudioCtx.currentTime + 0.02);
+      gain.gain.setValueAtTime(0.06, typingAudioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, typingAudioCtx.currentTime + 0.02);
+      osc.start(typingAudioCtx.currentTime);
+      osc.stop(typingAudioCtx.currentTime + 0.02);
+    } catch (e) {}
+  }
+  document.getElementById("input").addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key.length === 1) playTypingSound();
+  });
 
   document.getElementById("check").onclick = () => {
     const strict = document.getElementById("strict").checked;
@@ -1137,26 +1369,43 @@
       return "";
     }).join(" ");
 
+    const errors = [];
+    d.pretty.forEach(op => {
+      if (op.type === "del") errors.push({ type: "del", word: op.tok });
+      else if (op.type === "ins") errors.push({ type: "ins", word: op.tok });
+      else if (op.type === "sub") errors.push({ type: "sub", ref: op.a, user: op.b });
+    });
+
     const tips = [];
-    if (d.counts.del > 0) tips.push("You missed some words—watch small function words (a/the/to/of).");
-    if (d.counts.ins > 0) tips.push("You added extra words—slow down and follow the sentence structure.");
+    const delWords = errors.filter(e => e.type === "del").map(e => e.word);
+    const insWords = errors.filter(e => e.type === "ins").map(e => e.word);
+    const subs = errors.filter(e => e.type === "sub");
+    if (delWords.length > 0) tips.push("Missed: " + delWords.join(", ") + " (listen for small words like a/the/to/of).");
+    if (insWords.length > 0) tips.push("Extra: " + insWords.join(", ") + "—slow down and follow the sentence.");
+    if (subs.length > 0) {
+      const subList = subs.map(s => s.ref + "→" + s.user).join(", ");
+      tips.push("Wrong: " + subList + " (check spelling or 連音/pronunciation).");
+    }
     if (tips.length === 0) tips.push("Great accuracy—try Fast mode next.");
-    const tipText = tips[0] + (tips[1] ? " " + tips[1] : "");
+    const tipText = tips.join(" ");
 
     const sentenceId = isRepeatMode ? repeatModeIds[idx] : toSentenceId(currentArticleId, idx);
     const recordSentenceNum = isRepeatMode ? (parseIndexFromId(sentenceId) + 1) : (idx + 1);
     const recordTotalSentences = isRepeatMode ? fullSentences.length : sentences.length;
+    const secIdx = sectionIndex[idx];
     checkHistory.push({
       sentenceNum: recordSentenceNum,
       totalSentences: recordTotalSentences,
       sentenceId,
+      sectionIndex: secIdx !== undefined ? secIdx : 0,
       accPct,
       diffHtml,
-      tip: tipText
+      tip: tipText,
+      userText: hyp,
+      errors
     });
     saveCheckHistory();
 
-    const secIdx = sectionIndex[idx];
     const recordSentenceIndex = isRepeatMode ? parseIndexFromId(sentenceId) : idx;
     if (!document.getElementById("noRecordTest").checked) {
       saveScore({
@@ -1210,7 +1459,7 @@
     updateDictationControls();
   };
 
-  // 「1) Paste or load article」區塊收合（點標題展開/收合）
+  // 「2) Paste or load article」區塊收合（點標題展開/收合）
   document.querySelector("#cardArticle .card-head").addEventListener("click", () => {
     document.getElementById("cardArticle").classList.toggle("collapsed");
   });
