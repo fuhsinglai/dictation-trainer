@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>English Dictation Trainer</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+  <link rel="stylesheet" href="progress-panel.css" />
   <style>
     /* Paste or load article：只調這兩個（最小寬度、與其他三張的比例） */
     :root { --card-article-min: 680px; --card-article-flex: 12; --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-card: 0 2px 8px rgba(0,0,0,0.06); }
@@ -25,9 +26,9 @@
     .card-collapsible .card-body { }
     .card-collapsible.collapsed .card-body { display: none; }
     .history-summary { font-size: 12px; color: #666; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
-    .history-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .history-item { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; text-align: left; }
     .history-item:last-child { border-bottom: none; }
-    .history-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
     .history-header:hover { color: #0066cc; }
     .history-acc { font-weight: 600; min-width: 2.2em; text-align: right; }
     .history-acc.high { color: #0a7b0a; }
@@ -57,6 +58,17 @@
     .history-low-badge { font-size: 10px; color: #dc2626; margin-left: 6px; }
     .practice-again-btn { font-size: 11px; padding: 4px 10px; margin-top: 4px; }
     .section-repeat-btn:hover { background: #fee2e2; }
+    .history-section-block { border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; text-align: left; }
+    .history-section-block .history-section-head { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #fafafa; transition: background .2s; text-align: left; }
+.history-section-block .history-section-head .history-section-header { flex: 1; min-width: 0; text-align: left; }
+.history-section-block .history-section-head > div:last-child { margin-left: auto; flex-shrink: 0; }
+    .history-section-block .history-section-head:hover { background: #f5f5f5; }
+    .history-section-block .history-section-head::before { content: "▼"; font-size: 10px; opacity: .7; transition: transform .2s; flex-shrink: 0; }
+    .history-section-block.collapsed .history-section-head::before { transform: rotate(-90deg); }
+    .history-section-block .history-section-body { text-align: left; }
+    .history-section-block.collapsed .history-section-body { display: none; }
+    .history-section-block.section-mastered .history-section-head { background: #ecfdf5; }
+    .history-section-block.section-mastered .history-section-head:hover { background: #d1fae5; }
     .repeat-go { color: #0066cc; text-decoration: none; }
     .repeat-go:hover { text-decoration: underline; }
     .playback-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; background: #f5f5f5; border-radius: 10px; border: 1px solid #eee; }
@@ -157,6 +169,7 @@
             <select id="voice"></select>
           </div>
           <div class="progress-row">
+            <div id="sectionInfoWrap" class="muted" style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;" title=""></div>
             <span class="badge" id="idxBadge">Sentence 0 / 0</span>
             <div class="progress-wrap" id="sentenceProgressWrap" style="display:none;">
               <div class="progress-track"><div class="progress-fill" id="sentenceProgressFill"></div></div>
@@ -165,7 +178,7 @@
           </div>
         <div>
           <textarea id="input" placeholder="Type your dictation here ... "></textarea>
-          <div class="muted" style="font-size:12px;" align="right"><i>No Mouse: [Alt+P] play, [Ctrl+Enter] check. [Alt+←]/[Alt+→] prev/next, then [Alt+P] to play.</i></div>
+          <div class="muted" style="font-size:12px;" align="right">No mouse needed: Press <b>[Alt+P] to play</b>, <b>[Ctrl+Enter] to check</b>. After checking, the system automatically moves to the next sentence. Simply press <b>[Alt+P] to continue</b>.</div>
           <div id="sentenceBox" class="card dictation-sentence-box"></div>
           <br>
           <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-bottom:6px;">Show section</button>
@@ -251,7 +264,7 @@
         <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="準確率低於此%視為需重練" />
         <span class="muted" style="font-size:12px;">%</span>
       </div>
-      <div id="historyList" class="muted" style="font-size:13px;">No checks yet.</div>
+      <div id="historyList" class="muted" style="font-size:13px; text-align:left;">No checks yet.</div>
     </div>
   </aside>
   </div>
@@ -293,10 +306,22 @@
     return parts.map(s => s.trim()).filter(Boolean);
   }
 
-  // ---------- Normalization ----------
+  // ---------- Normalization (for accuracy comparison) ----------
+  // Canonicalize time formats so "4:00 am", "4 am", "4am", "4:00 a.m." are treated as equivalent
+  function normalizeTimeFormats(str) {
+    return str
+      .replace(/\ba\.m\./gi, "am")
+      .replace(/\bp\.m\./gi, "pm")
+      .replace(/\b(\d{1,2})\s*:\s*00\s*([ap]m)\b/gi, "$1$2")
+      .replace(/\b(\d{1,2})\s*:\s*(\d{2})\s*([ap]m)\b/gi, "$1:$2$3")
+      .replace(/\b(\d{1,2})\s+([ap]m)\b/gi, "$1$2")
+      .replace(/\b(\d{1,2})\s+00\s+([ap]m)\b/gi, "$1$2");
+  }
+
   function normalize(s, strict) {
     let t = s.trim();
     if (!strict) {
+      t = normalizeTimeFormats(t);
       t = t.toLowerCase();
       t = t.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
       t = t.replace(/[^\w\s']/g, " "); // remove punctuation (keep apostrophes)
@@ -494,6 +519,7 @@
   let fullSentences = [];
   let fullSectionIndex = [];
   let repeatModeIds = [];  // 重練模式下實際顯示的 sentenceId 順序（與 sentences 對應）
+  let lastUpdatedSection = null;  // 剛有 Check 更新時，要自動展開的 section index
 
   function toSentenceId(articleId, index0) {
     return (articleId || "pasted") + "_" + index0;
@@ -700,16 +726,30 @@
     const effectiveSectionIndex = (isRepeatMode && fullSectionIndex.length) ? fullSectionIndex : sectionIndex;
     const numSections = effectiveSectionIndex.length ? Math.max(...effectiveSectionIndex) + 1 : 0;
     const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(h => h.sectionIndex ?? 0))].sort((a, b) => a - b);
-    const maxShowPerSection = 12;
+    const historyCollapseKey = "dictationTrainer_historySecCollapsed_" + (currentArticleId || "pasted");
+    let collapsedSecs = {};
+    try { const raw = localStorage.getItem(historyCollapseKey); if (raw) collapsedSecs = JSON.parse(raw); } catch (e) {}
+    if (lastUpdatedSection != null) {
+      collapsedSecs[String(lastUpdatedSection)] = "0";
+      try { localStorage.setItem(historyCollapseKey, JSON.stringify(collapsedSecs)); } catch (e) {}
+      lastUpdatedSection = null;
+    }
     let html = "";
     sectionNumbers.forEach((sec, secIdx) => {
       if (secIdx > 0) html += "<hr style=\"margin:14px 0; border:0; border-top:1px solid #e5e7eb;\">";
       const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
-      const lowInSec = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec && h.accPct < threshold);
-        const hasLow = lowInSec.length > 0;
+      const bySentenceForLow = {};
+      secHistory.forEach(h => {
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+        if (sid && parseIndexFromId(sid) >= 0) bySentenceForLow[sid] = h;
+      });
+      const lowInSec = Object.values(bySentenceForLow).filter(h => (h.accPct || 0) < threshold);
+      const hasLow = lowInSec.length > 0;
         const repeatBtnHtml = hasLow ? `<button type="button" class="section-repeat-btn" data-sec="${sec}" style="flex-shrink:0; font-size:12px; padding:4px 10px; border-radius:6px; border:1px solid #dc2626; background:#fef2f2; color:#dc2626; cursor:pointer;">Re-practice low</button>` : "";
+        const progressBtnHtml = `<button type="button" class="section-progress-btn" data-sec="${sec}">Progress</button>`;
+      const isCollapsed = (collapsedSecs[String(sec)] || "1") !== "0";
       if (secHistory.length === 0) {
-        html += `<div class="history-section-block" style="margin-bottom:14px;"><div class="history-section-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151;">Section ${sec + 1}</div>${repeatBtnHtml}</div><span class="muted" style="font-size:12px;">No checks yet.</span></div>`;
+        html += `<div class="history-section-block ${isCollapsed ? "collapsed" : ""}" data-sec="${sec}" style="margin-bottom:14px;"><div class="history-section-head" data-sec="${sec}"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151; text-align:left;">Section ${sec + 1}</div><div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation();">${repeatBtnHtml}${progressBtnHtml}</div></div><div class="history-section-body" style="padding:0 10px 10px 10px;"><div id="historyProgressSec${sec}" class="history-progress-panel" style="display:none;"></div><span class="muted" style="font-size:12px;">No checks yet.</span></div></div>`;
         return;
       }
       const reversed = secHistory.slice().reverse();
@@ -722,36 +762,36 @@
       });
       const count = deduped.length;
       const avg = count ? Math.round(deduped.reduce((s, h) => s + h.accPct, 0) / count) : 0;
-      const showAllKey = "historySec" + sec + "ShowAll";
-      const showAll = listEl.dataset[showAllKey] === "1";
-      const toShow = showAll ? deduped : deduped.slice(0, maxShowPerSection);
-      const hasMore = deduped.length > maxShowPerSection && !showAll;
-      const moreCount = deduped.length - maxShowPerSection;
       const sectionName = "Section " + (sec + 1);
       const sectionSentenceIndices = effectiveSectionIndex.map((s, i) => s === sec ? i : -1).filter(i => i >= 0);
       const totalInSection = sectionSentenceIndices.length;
-      html += `<div class="history-section-block" style="margin-bottom:14px;">`;
-      html += `<div class="history-section-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151;">${sectionName} — ${count} checks · ${avg}% avg</div>${repeatBtnHtml}</div>`;
-      toShow.forEach((h, i) => {
+      const masteredClass = avg === 100 ? " section-mastered" : "";
+      html += `<div class="history-section-block${masteredClass} ${isCollapsed ? "collapsed" : ""}" data-sec="${sec}" style="margin-bottom:14px;">`;
+      html += `<div class="history-section-head" data-sec="${sec}"><div class="history-section-header" style="font-weight:600; font-size:13px; color:#374151; text-align:left;">${sectionName} — ${count} checks · ${avg}% avg</div><div style="display:flex; align-items:center; gap:8px;" onclick="event.stopPropagation();">${repeatBtnHtml}${progressBtnHtml}</div></div>`;
+      html += `<div class="history-section-body" style="padding:0 10px 10px 10px;">`;
+      html += `<div id="historyProgressSec${sec}" class="history-progress-panel" style="display:none;"></div>`;
+      deduped.forEach((h, i) => {
         const detailId = "hist-detail-sec" + sec + "-" + i;
         const globalIndex0 = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
         const posInSection = sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum;
         html += renderHistoryItem(h, detailId, posInSection, totalInSection);
       });
-      if (hasMore) {
-        html += `<div class="history-more history-more-sec" data-sec="${sec}" id="historyShowMoreSec${sec}">Show more (${moreCount})</div>`;
-      } else if (showAll && deduped.length > maxShowPerSection) {
-        html += `<div class="history-more history-more-sec" data-sec="${sec}" id="historyShowMoreSec${sec}">Show less</div>`;
-      }
-      html += `</div>`;
+      html += `</div></div>`;
     });
     listEl.innerHTML = html;
-    listEl.querySelectorAll(".history-more-sec").forEach(el => {
-      const sec = el.getAttribute("data-sec");
-      el.onclick = () => {
-        const key = "historySec" + sec + "ShowAll";
-        listEl.dataset[key] = listEl.dataset[key] === "1" ? "0" : "1";
-        renderSidebar();
+    listEl.querySelectorAll(".history-section-head").forEach(el => {
+      el.onclick = function() {
+        const sec = this.getAttribute("data-sec");
+        if (sec == null) return;
+        const block = this.closest(".history-section-block");
+        if (!block) return;
+        const key = "dictationTrainer_historySecCollapsed_" + (currentArticleId || "pasted");
+        let obj = {};
+        try { const raw = localStorage.getItem(key); if (raw) obj = JSON.parse(raw); } catch (e) {}
+        const nowCollapsed = !block.classList.contains("collapsed");
+        obj[sec] = nowCollapsed ? "1" : "0";
+        try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {}
+        block.classList.toggle("collapsed", nowCollapsed);
       };
     });
     listEl.querySelectorAll(".section-repeat-btn").forEach(btn => {
@@ -759,22 +799,34 @@
         const sec = parseInt(this.getAttribute("data-sec"), 10);
         if (isNaN(sec)) return;
         const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
-        const lowInSection = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec && h.accPct < th);
-        const seen = new Set();
-        const sectionIds = [];
-        lowInSection.forEach(h => {
+        const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+        const bySentence = {};
+        secHistory.forEach(h => {
           const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
-          if (sid && parseIndexFromId(sid) >= 0 && !seen.has(sid)) {
-            seen.add(sid);
-            sectionIds.push(sid);
-          }
+          if (sid && parseIndexFromId(sid) >= 0) bySentence[sid] = h;
         });
-        sectionIds.sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
+        const sectionIds = Object.keys(bySentence)
+          .filter(sid => (bySentence[sid].accPct || 0) < th)
+          .sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
         if (sectionIds.length === 0) return;
         enterRepeatMode(sectionIds);
         renderSidebar();
       };
     });
+    if (typeof ProgressPanel !== "undefined" && ProgressPanel.bindProgressButtons) {
+      ProgressPanel.bindProgressButtons();
+      ProgressPanel.setExpandSection(function(sec) {
+        const block = document.querySelector(".history-section-block[data-sec=\"" + sec + "\"]");
+        if (block && block.classList.contains("collapsed")) {
+          const key = "dictationTrainer_historySecCollapsed_" + (currentArticleId || "pasted");
+          let obj = {};
+          try { const raw = localStorage.getItem(key); if (raw) obj = JSON.parse(raw); } catch (e) {}
+          obj[String(sec)] = "0";
+          try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {}
+          block.classList.remove("collapsed");
+        }
+      });
+    }
     listEl.querySelectorAll(".practice-again-btn").forEach(btn => {
       btn.onclick = function() {
         const sid = this.getAttribute("data-sid");
@@ -853,14 +905,22 @@
       const totalInSection = sectionSentenceIndices.length;
       const originalText = sectionSentenceIndices.map(i => fullSentencesSource[i]).filter(Boolean).join(" ") || "";
       const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const practiceCountBySid = {};
+      secHistory.forEach(h => {
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+        if (sid) practiceCountBySid[sid] = (practiceCountBySid[sid] || 0) + 1;
+      });
       const items = [];
       secHistory.forEach(h => {
-        const globalIndex0 = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+        const globalIndex0 = parseIndexFromId(sid || "") >= 0 ? parseIndexFromId(sid) : (h.sentenceNum || 1) - 1;
         const posInSection = totalInSection ? (sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum) : h.sentenceNum;
         const reference = fullSentencesSource[globalIndex0] || "";
         items.push({
           sentence: posInSection,
           total: totalInSection,
+          sentenceId: sid || "",
+          practiceCount: sid ? (practiceCountBySid[sid] || 0) : 0,
           accuracyPct: h.accPct,
           reference,
           userText: h.userText ?? "",
@@ -877,7 +937,7 @@
     const payload = {
       _for: "AI analysis",
       _purpose: "Analyze errors to identify weaknesses (e.g. spelling, liaison/connected speech, missing/extra words); then generate targeted practice articles.",
-      _schema: "items[].reference=correct sentence; items[].userText=what user typed; items[].errors[]: del=missing word, ins=extra word, sub=substitution (ref→user, may be spelling or 連音); items[].accuracyPct=0-100",
+      _schema: "items[].reference=correct sentence; items[].userText=what user typed; items[].sentenceId=unique id; items[].practiceCount=times this sentence was practiced; items[].errors[]: del=missing word, ins=extra word, sub=substitution (ref→user); items[].accuracyPct=0-100",
       exportedAt: new Date().toISOString(),
       sections
     };
@@ -1023,6 +1083,22 @@
         progressWrap.style.display = "none";
       }
     }
+    const sectionInfoEl = document.getElementById("sectionInfoWrap");
+    if (sectionInfoEl) {
+      if (total === 0) {
+        sectionInfoEl.textContent = "";
+        sectionInfoEl.title = "";
+      } else if (isRepeatMode) {
+        sectionInfoEl.textContent = "重複練習";
+        sectionInfoEl.title = "";
+      } else {
+        const secTitle = sectionTitles[sec];
+        const secNum = (sec !== undefined && !isNaN(sec)) ? (sec + 1) : 1;
+        const label = "Section " + secNum + (secTitle ? ": " + secTitle : "");
+        sectionInfoEl.textContent = secTitle && secTitle.length > 35 ? "Section " + secNum + ": " + secTitle.slice(0, 35) + "…" : label;
+        sectionInfoEl.title = label;
+      }
+    }
   }
 
   function applySavedSection() {
@@ -1157,6 +1233,12 @@
     renderSentence();
     loadVoices();
     updateDictationControls();
+    applyInitialFocus();
+  }
+
+  function applyInitialFocus() {
+    if (sentences.length > 0) document.getElementById("input").focus();
+    else document.getElementById("article").focus();
   }
 
   // Load articles.json from same directory (use a local server e.g. Live Server)
@@ -1171,8 +1253,9 @@
         document.getElementById("articleSelect").value = savedArticle;
         loadSelectedArticle(true);
       }
+      setTimeout(applyInitialFocus, 0);
     })
-    .catch(() => {});
+    .catch(() => { setTimeout(applyInitialFocus, 0); });
 
   function loadSelectedArticle(restoreSection) {
     const i = document.getElementById("articleSelect").value;
@@ -1406,6 +1489,28 @@
       osc.stop(typingAudioCtx.currentTime + 0.02);
     } catch (e) {}
   }
+  function playCorrectSound() {
+    try {
+      if (!typingAudioCtx) typingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (typingAudioCtx.state === "suspended") typingAudioCtx.resume();
+      const ctx = typingAudioCtx;
+      const t0 = ctx.currentTime;
+      [523.25, 659.25, 783.99].forEach(function (freq, i) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t0);
+        const start = t0 + i * 0.08;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.12, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+        osc.start(start);
+        osc.stop(start + 0.15);
+      });
+    } catch (e) {}
+  }
   document.getElementById("input").addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key.length === 1) playTypingSound();
@@ -1421,6 +1526,8 @@
     const d = diffTokens(refTok, hypTok);
     const acc = accuracyFromCounts(d.refLen, d.counts.del, d.counts.ins);
     const accPct = Math.round(acc*100);
+
+    if (accPct >= 100) playCorrectSound();
 
     // track wrong words (from substitutions + deletions)
     d.pretty.forEach(op => {
@@ -1479,8 +1586,11 @@
     });
     saveCheckHistory();
 
+    lastUpdatedSection = (isRepeatMode && fullSectionIndex.length) ? (fullSectionIndex[parseIndexFromId(sentenceId)] ?? secIdx) : secIdx;
+
     const recordSentenceIndex = isRepeatMode ? parseIndexFromId(sentenceId) : idx;
     if (!document.getElementById("noRecordTest").checked) {
+      const wordCount = (ref || "").trim().split(/\s+/).filter(Boolean).length;
       saveScore({
         ts: new Date().toISOString(),
         articleId: currentArticleId,
@@ -1488,7 +1598,8 @@
         sentenceIndex: recordSentenceIndex,
         sentenceId,
         accuracy: accPct,
-        replayCount: playReplayCountForCurrentSentence
+        replayCount: playReplayCountForCurrentSentence,
+        wordCount: wordCount
       });
     }
     playReplayCountForCurrentSentence = 0;
@@ -1532,9 +1643,14 @@
     updateDictationControls();
   };
 
-  // 「2) Paste or load article」區塊收合（點標題展開/收合）
+  // 「2) Paste or load article」區塊收合（點標題展開/收合），狀態存 localStorage
+  const cardArticleCollapsedKey = "dictationTrainer_cardArticleCollapsed";
+  const cardArticleEl = document.getElementById("cardArticle");
+  var savedCollapsed = localStorage.getItem(cardArticleCollapsedKey);
+  if (savedCollapsed === "1") cardArticleEl.classList.add("collapsed");
   document.querySelector("#cardArticle .card-head").addEventListener("click", () => {
-    document.getElementById("cardArticle").classList.toggle("collapsed");
+    cardArticleEl.classList.toggle("collapsed");
+    localStorage.setItem(cardArticleCollapsedKey, cardArticleEl.classList.contains("collapsed") ? "1" : "0");
   });
 
   document.getElementById("clearScores").onclick = () => {
@@ -1563,6 +1679,8 @@
   renderSentence();
   updateDictationControls();
   renderLearningStats();
+  setTimeout(applyInitialFocus, 50);
 </script>
+<script src="progress-panel.js"></script>
 </body>
 </html>

@@ -1,0 +1,333 @@
+/* Section Progress Panel */
+.section-progress-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #94a3b8;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.section-progress-btn:hover {
+  background: #f1f5f9;
+  border-color: #64748b;
+}
+
+.history-progress-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.progress-panel-chart-wrap,
+.progress-panel-sentences-wrap {
+  margin-bottom: 12px;
+}
+.progress-panel-chart-wrap:last-child,
+.progress-panel-sentences-wrap:last-child {
+  margin-bottom: 0;
+}
+
+.progress-panel-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.progress-panel-muted {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.progress-panel-chart {
+  display: block;
+  max-width: 100%;
+}
+
+.progress-panel-sentence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-panel-sentence-row {
+  font-size: 12px;
+  padding: 2px 0;
+}
+.progress-panel-sentence-row.progress-up {
+  color: #0a7b0a;
+}
+.progress-panel-sentence-row.progress-down {
+  color: #c62828;
+}
+
+.progress-panel-attribution {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Word Wall */
+.progress-panel-wordwall-wrap {
+  margin-bottom: 12px;
+}
+
+.progress-panel-wordwall-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.progress-panel-wordwall-col {
+  flex: 1;
+  min-width: 120px;
+}
+
+.progress-panel-wordwall-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.progress-panel-wordwall-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.progress-panel-wordwall-col-bad {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.progress-panel-wordwall-col-good {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.progress-panel-word-bad {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+.progress-panel-word-good {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #bbf7d0;
+  color: #15803d;
+}
+
+/* AI Summary */
+.progress-panel-ai-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.progress-panel-ai-summary {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.progress-panel-ai-suggestion {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Mastery Milestone */
+.progress-panel-mastery-wrap {
+  margin-bottom: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, #fef9c3 0%, #fef3c7 100%);
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.progress-panel-mastery-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.progress-panel-mastery-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #92400e;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.progress-panel-mastery-stats {
+  font-size: 12px;
+  color: #78350f;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-panel-speed-wrap {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #166534;
+}
+
+.progress-panel-timelapse-wrap {
+  margin-bottom: 14px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.progress-panel-timelapse-chart {
+  display: block;
+  margin: 0 auto 8px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.progress-panel-timelapse-done {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+/* Activity Heatmap */
+.progress-panel-heatmap-wrap {
+  margin-bottom: 12px;
+}
+
+.progress-panel-heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.progress-panel-heatmap-row {
+  display: flex;
+  gap: 2px;
+}
+
+.progress-panel-heatmap-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #ebedf0;
+}
+
+.progress-panel-heatmap-cell.heatmap-l0 {
+  background: #ebedf0;
+}
+
+.progress-panel-heatmap-cell.heatmap-l1 {
+  background: #9be9a8;
+}
+
+.progress-panel-heatmap-cell.heatmap-l2 {
+  background: #40c463;
+}
+
+.progress-panel-heatmap-cell.heatmap-l3 {
+  background: #30a14e;
+}
+
+.progress-panel-heatmap-cell.heatmap-l4 {
+  background: #216e39;
+}
+
+.progress-panel-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.progress-panel-heatmap-legend .heatmap-l0 { width: 8px; height: 8px; border-radius: 2px; background: #ebedf0; display: inline-block; }
+.progress-panel-heatmap-legend .heatmap-l1 { width: 8px; height: 8px; border-radius: 2px; background: #9be9a8; display: inline-block; }
+.progress-panel-heatmap-legend .heatmap-l2 { width: 8px; height: 8px; border-radius: 2px; background: #40c463; display: inline-block; }
+.progress-panel-heatmap-legend .heatmap-l3 { width: 8px; height: 8px; border-radius: 2px; background: #30a14e; display: inline-block; }
+.progress-panel-heatmap-legend .heatmap-l4 { width: 8px; height: 8px; border-radius: 2px; background: #216e39; display: inline-block; }
+
+/* Milestone */
+.progress-panel-milestone-wrap {
+  font-size: 12px;
+  color: #0a7b0a;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border-left: 3px solid #22c55e;
+}
+
+/* Word Wall - Eliminated */
+.progress-panel-wordwall-col-full {
+  flex: 1 1 100%;
+}
+
+.progress-panel-word-eliminated {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.progress-panel-word-eliminated-animate {
+  animation: eliminated-fadein 0.5s ease-out;
+}
+
+@keyframes eliminated-fadein {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.word-eliminated-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #059669;
+  animation: eliminated-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes eliminated-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.progress-panel-star {
+  animation: star-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes star-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
