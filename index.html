@@ -93,6 +93,19 @@
     .help-modal code, .help-modal kbd { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .help-close { float: right; margin: -8px -8px 8px 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 13px; }
     .help-close:hover { background: #f0f0f0; }
+    .section-complete-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.4); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .section-complete-overlay.open { display: flex; }
+    .section-complete-modal { background: #fff; border-radius: 14px; max-width: 420px; max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.2); padding: 24px; border: 2px solid #22c55e; }
+    .section-complete-modal h4 { margin: 0 0 16px 0; font-size: 18px; color: #0f172a; }
+    .section-complete-modal .section-stats { font-size: 15px; line-height: 1.8; color: #374151; }
+    .section-complete-modal .section-stats strong { color: #1e293b; }
+    .section-complete-modal .section-sentence-list { margin-top: 12px; max-height: 200px; overflow-y: auto; }
+    .section-complete-modal .section-sentence-list .progress-panel-title { font-size: 13px; margin-bottom: 8px; }
+    .section-complete-modal .section-buttons { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .section-complete-modal .section-close { padding: 8px 20px; border-radius: 8px; border: 1px solid #22c55e; background: #22c55e; color: #fff; cursor: pointer; font-size: 14px; width: 100%; }
+    .section-complete-modal .section-close:hover { background: #16a34a; }
+    .section-complete-modal .section-btn-secondary { padding: 8px 20px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; color: #374151; cursor: pointer; font-size: 14px; }
+    .section-complete-modal .section-btn-secondary:hover { background: #f8fafc; border-color: #9ca3af; }
     .dictation-area { display: flex; gap: 0; border: 2px solid #22c55e; border-radius: 14px; overflow: hidden; margin-top: 8px; box-shadow: 0 4px 14px rgba(34,197,94,0.12); }
     .dictation-controls { width: 140px; flex-shrink: 0; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-right: 2px solid #22c55e; background: linear-gradient(180deg, #f8fcf9 0%, #f0fdf4 100%); }
     .dictation-controls .nav-buttons { display: flex; gap: 8px; }
@@ -147,7 +160,7 @@
           <button type="button" id="prev" class="btn-circle" title="Alt + ←"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
           <button type="button" id="next" class="btn-circle" title="Alt + →"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
         </div>
-        <button type="button" id="play" class="btn-play" title="Alt + P"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg></button>
+        <button type="button" id="play" class="btn-play" title="Alt+P or Tab"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7z"/></svg></button>
         <div class="speed-wrap">
           <div class="speed-label">Speed</div>
           <div class="speed-slider-wrap">
@@ -178,20 +191,37 @@
           </div>
         <div>
           <textarea id="input" placeholder="Type your dictation here ... "></textarea>
-          <div class="muted" style="font-size:12px;" align="right">No mouse needed: Press <b>[Alt+P] to play</b>, <b>[Ctrl+Enter] to check</b>. After checking, the system automatically moves to the next sentence. Simply press <b>[Alt+P] to continue</b>.</div>
+          <div class="muted" style="font-size:12px; right: 0; text-align:right;">No mouse needed: Press <b>[Alt+P] or [Tab] to play</b>, <b>[Alt+Enter] or [Ctrl+Enter] to check</b>. After checking, the system automatically moves to the next sentence. Simply press <b>[Alt+P] or [Tab] to continue</b>.</div>
           <div id="sentenceBox" class="card dictation-sentence-box"></div>
           <br>
           <button type="button" id="toggleChapterText" class="muted" style="font-size:12px; margin-bottom:6px;">Show section</button>
           <div id="chapterTextBox" class="card muted" style="margin-top:6px; display:none; white-space:pre-wrap; max-height:200px; overflow:auto;"></div>
         </div>
-        <div class="row">
-          <button id="check" class="btn-icon" title="Check (Ctrl+Enter)"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Check</button>
+        <div class="row" style="align-items:center; gap:16px;">
+          <button id="check" class="btn-icon" title="Check (Alt+Enter or Ctrl+Enter)"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Check</button>
           <button id="reveal" class="btn-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> Reveal Answer</button>
           <button id="clear" class="btn-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Clear Input</button>
+          <label class="muted" style="font-size:12px; cursor:pointer; margin-left:auto; display:flex; gap:16px;">
+            <span><input type="checkbox" id="showSectionReport" checked /> Show section report when complete</span>
+            <span><input type="checkbox" id="playSectionVoice" checked /> Play section number when entering</span>
+          </label>
         </div>
       </div>
     </div>
     <div id="result" class="card" style="display:none;"></div>
+    <div id="sectionCompleteOverlay" class="section-complete-overlay">
+      <div class="section-complete-modal" onclick="event.stopPropagation()">
+        <h4 id="sectionCompleteTitle">Section Complete</h4>
+        <div id="sectionCompleteStats" class="section-stats"></div>
+        <div id="sectionCompleteSentenceList" class="section-sentence-list"></div>
+        <div class="section-buttons">
+          <button type="button" id="sectionCompleteRetry" class="section-btn-secondary">Re-practice section</button>
+          <button type="button" id="sectionCompleteRetryLow" class="section-btn-secondary" style="display:none;">Re-practice low</button>
+          <button type="button" id="sectionCompleteNext" class="section-btn-secondary">Go to next section</button>
+          <button type="button" id="sectionCompleteClose" class="section-close">OK</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <aside class="sidebar">
@@ -219,7 +249,7 @@
             <option value="">— Load article first —</option>
           </select>
         </label>
-        <button type="button" id="exitRepeatBtn" style="display:none; font-size:12px;">結束重練</button>
+        <button type="button" id="exitRepeatBtn" style="display:none; font-size:12px;">Exit repeat mode</button>
       </div>
       <p class="muted" style="font-size:12px; margin:0 0 6px 0;">Paste or type your article in the box below, then click <strong>Load & Split Sentences</strong>.</p>
       <textarea id="article" placeholder="Paste English article here, or type..."></textarea>
@@ -261,7 +291,7 @@
       <div id="repeatPracticePanel" style="display:none; margin-bottom:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:12px;"></div>
       <div class="row" style="margin-bottom:8px;">
         <label class="muted" style="font-size:12px;">Mark as review below:</label>
-        <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="準確率低於此%視為需重練" />
+        <input type="number" id="lowAccuracyThreshold" min="0" max="100" value="60" style="width:48px; padding:4px 6px; font-size:12px;" title="Mark for re-practice if accuracy below this %" />
         <span class="muted" style="font-size:12px;">%</span>
       </div>
       <div id="historyList" class="muted" style="font-size:13px; text-align:left;">No checks yet.</div>
@@ -272,27 +302,27 @@
   <div id="helpOverlay" class="help-overlay" aria-hidden="true">
     <div class="help-modal" onclick="event.stopPropagation()">
       <button type="button" class="help-close" id="helpClose" aria-label="Close">Close</button>
-      <h3>操作說明 / How to use</h3>
-      <p style="background:#e8f4fd; border-left:4px solid #2563eb; padding:10px 12px; margin:0 0 14px 0; border-radius:0 8px 8px 0;"><strong>建議使用 Microsoft Edge</strong>，可享有更多語音（發音）選擇。</p>
-      <h4>1. 載入文章</h4>
-      <p>在右側「Paste or load article」選擇文章或貼上/上傳 .txt，按 <kbd>Load</kbd>。文章會依空行分成多個 Section。</p>
-      <h4>2. 聽打流程</h4>
+      <h3>How to use</h3>
+      <p style="background:#e8f4fd; border-left:4px solid #2563eb; padding:10px 12px; margin:0 0 14px 0; border-radius:0 8px 8px 0;"><strong>Microsoft Edge recommended</strong> for more voice options.</p>
+      <h4>1. Load article</h4>
+      <p>Select an article from "Paste or load article" or paste/upload a .txt file, then click <kbd>Load</kbd>. The article is split into sections by blank lines.</p>
+      <h4>2. Dictation flow</h4>
       <ul>
-        <li>左側：<kbd>◀</kbd><kbd>▶</kbd> 換句，大按鈕 <kbd>▶</kbd> 播放目前句子，Speed 可調語速，「Play section」播放整段。</li>
-        <li>上方 Voice 可選發音，中間框輸入你聽到的句子。</li>
-        <li><kbd>Check</kbd> 對答案，<kbd>Reveal Answer</kbd> 直接看答案，<kbd>Clear Input</kbd> 清空輸入。</li>
+        <li>Left panel: <kbd>◀</kbd><kbd>▶</kbd> for prev/next, big <kbd>▶</kbd> to play current sentence, Speed to adjust playback rate, "Play section" for the whole section.</li>
+        <li>Choose Voice at top, type what you hear in the input box.</li>
+        <li><kbd>Check</kbd> to submit, <kbd>Reveal Answer</kbd> to show answer, <kbd>Clear Input</kbd> to clear.</li>
       </ul>
-      <h4>3. 鍵盤快速鍵（免滑鼠）</h4>
+      <h4>3. Keyboard shortcuts</h4>
       <ul>
-        <li><kbd>Alt+P</kbd> 播放目前句</li>
-        <li><kbd>Ctrl+Enter</kbd> 送出檢查</li>
-        <li><kbd>Alt+←</kbd> 上一句　<kbd>Alt+→</kbd> 下一句</li>
-        <li>換句後再按 <kbd>Alt+P</kbd> 播放該句</li>
+        <li><kbd>Alt+P</kbd> or <kbd>Tab</kbd> to play current sentence</li>
+        <li><kbd>Alt+Enter</kbd> or <kbd>Ctrl+Enter</kbd> to check</li>
+        <li><kbd>Alt+←</kbd> prev sentence　<kbd>Alt+→</kbd> next sentence</li>
+        <li>After changing sentence, press <kbd>Alt+P</kbd> or <kbd>Tab</kbd> to play</li>
       </ul>
-      <h4>4. History 與重練</h4>
-      <p>右側 History 依 Section 顯示每段檢查紀錄與平均。低於門檻的會標「建議重練」；可點「重練此句」單句重練，或 Section 旁的「Re-practice low」只重練該段低分句。Export 可匯出 JSON 供 AI 分析弱點。</p>
-      <h4>5. 其他</h4>
-      <p>「Hide sentence」可隱藏答案區；「Show section」顯示整段原文。Strict mode 開啟時標點與大小寫須一致才算對。</p>
+      <h4>4. History &amp; re-practice</h4>
+      <p>History shows check records and averages by section. Items below the threshold are marked for re-practice; click "Re-practice this sentence" for a single sentence, or "Re-practice low" next to a section for low-score sentences. Export outputs JSON for AI analysis.</p>
+      <h4>5. Other</h4>
+      <p>"Hide sentence" hides the answer area; "Show section" shows the full section text. In Strict mode, punctuation and case must match.</p>
     </div>
   </div>
 
@@ -519,7 +549,10 @@
   let fullSentences = [];
   let fullSectionIndex = [];
   let repeatModeIds = [];  // 重練模式下實際顯示的 sentenceId 順序（與 sentences 對應）
+  let repeatModeSourceSection = null;  // 從 Re-practice section/low 進入時，完成後要跳到下一個 section
   let lastUpdatedSection = null;  // 剛有 Check 更新時，要自動展開的 section index
+  let lastSectionCompleteSec = null;  // 章節完成彈窗對應的 section index，-1 表示 re-practice complete
+  let lastAnnouncedSection = null;  // 已用語音提醒過的 section index
 
   function toSentenceId(articleId, index0) {
     return (articleId || "pasted") + "_" + index0;
@@ -602,8 +635,9 @@
     saveRepeatList();
   }
 
-  function enterRepeatMode(onlySectionIds) {
+  function enterRepeatMode(onlySectionIds, sourceSection) {
     if (!sentences.length) return;
+    repeatModeSourceSection = (typeof sourceSection === "number" && !isNaN(sourceSection)) ? sourceSection : null;
     fullSentences = sentences.slice();
     fullSectionIndex = sectionIndex.slice();
     const idSet = new Set(onlySectionIds && onlySectionIds.length ? onlySectionIds : repeatPracticeIds);
@@ -645,17 +679,36 @@
     sentences.push(...fullSentences);
     sectionIndex.length = 0;
     sectionIndex.push(...fullSectionIndex);
-    idx = 0;
+    const srcSec = repeatModeSourceSection;
     repeatModeIds = [];
     fullSentences = [];
     fullSectionIndex = [];
+    repeatModeSourceSection = null;
     isRepeatMode = false;
     document.getElementById("exitRepeatBtn").style.display = "none";
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     fillSectionDropdown();
+    if (srcSec !== null && sectionIndex.length) {
+      const nextSec = srcSec + 1;
+      const firstIdx = sectionIndex.indexOf(nextSec);
+      if (firstIdx >= 0) {
+        idx = firstIdx;
+        saveSentenceIndex();
+        var sel = document.getElementById("sectionSelect");
+        if (sel && sel.options.length > 1) { sel.value = String(nextSec); localStorage.setItem("dictationTrainer_section", String(nextSec)); }
+        var panel = document.getElementById("chapterTextBox");
+        if (panel && panel.style.display === "block") {
+          var chapterSentences = sentences.filter(function(_, i) { return sectionIndex[i] === nextSec; });
+          panel.textContent = chapterSentences.join(" ");
+        }
+      }
+    } else {
+      idx = 0;
+    }
     renderSentence();
     updateDictationControls();
+    renderSidebar();
   }
 
   function renderSidebar() {
@@ -700,7 +753,7 @@
       const accCls = accClass(h.accPct);
       const isLow = h.accPct < threshold;
       const lowClass = isLow ? " low-accuracy" : "";
-      const lowBadge = isLow ? "<span class=\"history-low-badge\">&lt;" + threshold + "% 建議重練</span>" : "";
+      const lowBadge = isLow ? "<span class=\"history-low-badge\">&lt;" + threshold + "% suggest re-practice</span>" : "";
       const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + (h.sentenceNum || 0));
       const num = totalInSection != null && posInSection != null ? posInSection : h.sentenceNum;
       const den = totalInSection != null ? totalInSection : h.totalSentences;
@@ -712,7 +765,7 @@
         <div id="${detailId}" class="history-detail">
           <div class="diff" style="margin:6px 0; line-height:1.6; font-size:12px;">${h.diffHtml || ""}</div>
           <div class="muted" style="font-size:11px;"><b>Tip:</b> ${h.tip || ""}</div>
-          ${isLow ? `<div style="margin-top:8px;"><button type="button" class="practice-again-btn" data-sid="${sid.replace(/"/g, '&quot;')}">▶ 重練此句</button></div>` : ""}
+          ${isLow ? `<div style="margin-top:8px;"><button type="button" class="practice-again-btn" data-sid="${sid.replace(/"/g, '&quot;')}">▶ Re-practice this sentence</button></div>` : ""}
         </div>
       </div>`;
     }
@@ -725,7 +778,12 @@
     // 重練模式下 sectionIndex 已被改成全 0，用 fullSectionIndex 才能顯示所有 section 區塊
     const effectiveSectionIndex = (isRepeatMode && fullSectionIndex.length) ? fullSectionIndex : sectionIndex;
     const numSections = effectiveSectionIndex.length ? Math.max(...effectiveSectionIndex) + 1 : 0;
-    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(h => h.sectionIndex ?? 0))].sort((a, b) => a - b);
+    function getRecordSection(h) {
+      const g = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
+      if (effectiveSectionIndex[g] !== undefined && effectiveSectionIndex[g] >= 0) return effectiveSectionIndex[g];
+      return h.sectionIndex ?? 0;
+    }
+    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(getRecordSection))].sort((a, b) => a - b);
     const historyCollapseKey = "dictationTrainer_historySecCollapsed_" + (currentArticleId || "pasted");
     let collapsedSecs = {};
     try { const raw = localStorage.getItem(historyCollapseKey); if (raw) collapsedSecs = JSON.parse(raw); } catch (e) {}
@@ -737,7 +795,7 @@
     let html = "";
     sectionNumbers.forEach((sec, secIdx) => {
       if (secIdx > 0) html += "<hr style=\"margin:14px 0; border:0; border-top:1px solid #e5e7eb;\">";
-      const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const secHistory = checkHistory.filter(h => getRecordSection(h) === sec);
       const bySentenceForLow = {};
       secHistory.forEach(h => {
         const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
@@ -773,7 +831,8 @@
       deduped.forEach((h, i) => {
         const detailId = "hist-detail-sec" + sec + "-" + i;
         const globalIndex0 = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
-        const posInSection = sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum;
+        const idxInSec = sectionSentenceIndices.indexOf(globalIndex0);
+        const posInSection = idxInSec >= 0 ? idxInSec + 1 : null;
         html += renderHistoryItem(h, detailId, posInSection, totalInSection);
       });
       html += `</div></div>`;
@@ -799,7 +858,7 @@
         const sec = parseInt(this.getAttribute("data-sec"), 10);
         if (isNaN(sec)) return;
         const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
-        const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+        const secHistory = checkHistory.filter(h => getRecordSection(h) === sec);
         const bySentence = {};
         secHistory.forEach(h => {
           const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
@@ -809,7 +868,7 @@
           .filter(sid => (bySentence[sid].accPct || 0) < th)
           .sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
         if (sectionIds.length === 0) return;
-        enterRepeatMode(sectionIds);
+        enterRepeatMode(sectionIds, sec);
         renderSidebar();
       };
     });
@@ -841,6 +900,7 @@
         } else {
           idx = Math.max(0, Math.min(sentences.length - 1, parseIndexFromId(sid)));
         }
+        saveSentenceIndex();
         document.getElementById("result").style.display = "none";
         document.getElementById("input").value = "";
         renderSentence();
@@ -864,7 +924,7 @@
       return "<a href=\"#\" class=\"repeat-go\" data-sid=\"" + sid.replace(/"/g, "&quot;") + "\">#" + origNum + (totalOrig ? "/" + totalOrig : "") + "</a>";
     }).join(", ");
     panel.style.display = "block";
-    panel.innerHTML = "<span class=\"muted\">重複練習 (" + repeatPracticeIds.length + "):</span> " + links + " <button type=\"button\" id=\"repeatClearBtn\" style=\"font-size:11px; padding:2px 8px; margin-left:6px;\">Clear</button> <button type=\"button\" id=\"startRepeatBtn\" style=\"font-size:11px; padding:2px 8px;\">開始重練</button>";
+    panel.innerHTML = "<span class=\"muted\">Re-practice (" + repeatPracticeIds.length + "):</span> " + links + " <button type=\"button\" id=\"repeatClearBtn\" style=\"font-size:11px; padding:2px 8px; margin-left:6px;\">Clear</button> <button type=\"button\" id=\"startRepeatBtn\" style=\"font-size:11px; padding:2px 8px;\">Start re-practice</button>";
     panel.querySelectorAll(".repeat-go").forEach(a => {
       a.onclick = function(e) {
         e.preventDefault();
@@ -877,6 +937,7 @@
         } else {
           idx = Math.max(0, Math.min(sentences.length - 1, parseIndexFromId(sid)));
         }
+        saveSentenceIndex();
         document.getElementById("result").style.display = "none";
         document.getElementById("input").value = "";
         renderSentence();
@@ -898,13 +959,18 @@
     const effectiveSectionIndex = (isRepeatMode && fullSectionIndex.length) ? fullSectionIndex : sectionIndex;
     const fullSentencesSource = isRepeatMode && fullSentences.length ? fullSentences : sentences;
     const numSections = effectiveSectionIndex.length ? Math.max(...effectiveSectionIndex) + 1 : 0;
-    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(h => h.sectionIndex ?? 0))].sort((a, b) => a - b);
+    function getRecordSectionExport(h) {
+      const g = parseIndexFromId(h.sentenceId || "") >= 0 ? parseIndexFromId(h.sentenceId) : (h.sentenceNum || 1) - 1;
+      if (effectiveSectionIndex[g] !== undefined && effectiveSectionIndex[g] >= 0) return effectiveSectionIndex[g];
+      return h.sectionIndex ?? 0;
+    }
+    const sectionNumbers = numSections > 0 ? [...Array(numSections).keys()] : [...new Set(checkHistory.map(getRecordSectionExport))].sort((a, b) => a - b);
     const sections = [];
     sectionNumbers.forEach(sec => {
       const sectionSentenceIndices = effectiveSectionIndex.length ? effectiveSectionIndex.map((s, i) => s === sec ? i : -1).filter(i => i >= 0) : [];
       const totalInSection = sectionSentenceIndices.length;
       const originalText = sectionSentenceIndices.map(i => fullSentencesSource[i]).filter(Boolean).join(" ") || "";
-      const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const secHistory = checkHistory.filter(h => getRecordSectionExport(h) === sec);
       const practiceCountBySid = {};
       secHistory.forEach(h => {
         const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
@@ -914,7 +980,8 @@
       secHistory.forEach(h => {
         const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
         const globalIndex0 = parseIndexFromId(sid || "") >= 0 ? parseIndexFromId(sid) : (h.sentenceNum || 1) - 1;
-        const posInSection = totalInSection ? (sectionSentenceIndices.indexOf(globalIndex0) + 1 || h.sentenceNum) : h.sentenceNum;
+        const idxInSec = sectionSentenceIndices.indexOf(globalIndex0);
+        const posInSection = totalInSection && idxInSec >= 0 ? idxInSec + 1 : h.sentenceNum;
         const reference = fullSentencesSource[globalIndex0] || "";
         items.push({
           sentence: posInSection,
@@ -1001,7 +1068,7 @@
     const exitBtn = document.getElementById("exitRepeatBtn");
     if (isRepeatMode) {
       sel.innerHTML = "";
-      sel.appendChild(new Option("重複練習 (" + sentences.length + " 句)", "repeat"));
+      sel.appendChild(new Option("Re-practice (" + sentences.length + " sent)", "repeat"));
       sel.value = "repeat";
       if (exitBtn) exitBtn.style.display = "";
       row.style.display = "";
@@ -1062,7 +1129,7 @@
       const origTotal = fullSentences.length;
       currentNum = idx + 1;
       totalNum = total;
-      document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total} (原#${origNum}/${origTotal})` : `Sentence 0 / 0`;
+      document.getElementById("idxBadge").textContent = total ? `Sentence ${idx + 1} / ${total} (orig#${origNum}/${origTotal})` : `Sentence 0 / 0`;
     } else if (sec !== undefined && sectionIndex.length === sentences.length) {
       const sectionIndices = sentences.map((_, i) => i).filter(i => sectionIndex[i] === sec);
       const posInSection = sectionIndices.indexOf(idx) + 1;
@@ -1089,7 +1156,7 @@
         sectionInfoEl.textContent = "";
         sectionInfoEl.title = "";
       } else if (isRepeatMode) {
-        sectionInfoEl.textContent = "重複練習";
+        sectionInfoEl.textContent = "Re-practice";
         sectionInfoEl.title = "";
       } else {
         const secTitle = sectionTitles[sec];
@@ -1099,18 +1166,63 @@
         sectionInfoEl.title = label;
       }
     }
+    // 進入新章節時播放語音提醒（可選）
+    const playSectionVoiceEl = document.getElementById("playSectionVoice");
+    if (playSectionVoiceEl && playSectionVoiceEl.checked && !isRepeatMode && sec !== undefined && sec !== lastAnnouncedSection && sentences.length > 0) {
+      lastAnnouncedSection = sec;
+      const secNum = sec + 1;
+      speak("Section " + secNum);
+    }
+  }
+
+  function saveSentenceIndex() {
+    if (!sentences.length) return;
+    var toSave = idx;
+    if (isRepeatMode && repeatModeIds[idx]) {
+      var gi = parseIndexFromId(repeatModeIds[idx]);
+      if (gi >= 0) toSave = gi;
+    }
+    try {
+      localStorage.setItem("dictationTrainer_sentenceIndex", String(Math.max(0, toSave)));
+      var sel = document.getElementById("sectionSelect");
+      if (sel && sel.value) {
+        var secToSave = sel.value;
+        if (secToSave !== "all" && sectionIndex.length && toSave < sectionIndex.length) {
+          var sec = sectionIndex[toSave];
+          if (sec !== undefined) secToSave = String(sec);
+        }
+        localStorage.setItem("dictationTrainer_section", secToSave);
+      }
+    } catch (e) {}
   }
 
   function applySavedSection() {
     var saved = localStorage.getItem("dictationTrainer_section");
+    var savedIdx = localStorage.getItem("dictationTrainer_sentenceIndex");
     if (saved === null || !sectionIndex.length) return;
-    var sec = parseInt(saved, 10);
-    if (isNaN(sec) || sec < 0 || sec > Math.max(...sectionIndex)) return;
-    var firstIdx = sectionIndex.indexOf(sec);
-    if (firstIdx < 0) return;
-    idx = firstIdx;
-    var sel = document.getElementById("sectionSelect");
-    if (sel.options.length > 1) sel.value = saved;
+    var targetIdx = 0;
+    if (saved === "all") {
+      targetIdx = 0;
+      if (savedIdx !== null) {
+        var vi = parseInt(savedIdx, 10);
+        if (!isNaN(vi) && vi >= 0 && vi < sentences.length) targetIdx = vi;
+      }
+      var sel = document.getElementById("sectionSelect");
+      if (sel && sel.options.length > 1) sel.value = "all";
+    } else {
+      var sec = parseInt(saved, 10);
+      if (isNaN(sec) || sec < 0 || sec > Math.max(...sectionIndex)) return;
+      var firstIdx = sectionIndex.indexOf(sec);
+      if (firstIdx < 0) return;
+      targetIdx = firstIdx;
+      if (savedIdx !== null) {
+        var vi = parseInt(savedIdx, 10);
+        if (!isNaN(vi) && vi >= 0 && vi < sentences.length && sectionIndex[vi] === sec) targetIdx = vi;
+      }
+      var sel = document.getElementById("sectionSelect");
+      if (sel && sel.options.length > 1) sel.value = saved;
+    }
+    idx = targetIdx;
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     renderSentence();
@@ -1122,6 +1234,7 @@
     localStorage.setItem("dictationTrainer_section", v);
     if (v === "all") {
       idx = 0;
+      saveSentenceIndex();
       document.getElementById("result").style.display = "none";
       document.getElementById("input").value = "";
       renderSentence();
@@ -1137,6 +1250,7 @@
     const firstIdx = sectionIndex.indexOf(sec);
     if (firstIdx < 0) return;
     idx = firstIdx;
+    saveSentenceIndex();
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
     renderSentence();
@@ -1215,12 +1329,14 @@
     sectionIndex.push(...si);
     sectionTitles = st || [];
     idx = 0;
+    lastAnnouncedSection = null;
     playReplayCountForCurrentSentence = 0;
     const sel = document.getElementById("articleSelect").value;
     const art = (sel !== "" && articleList[parseInt(sel, 10)]) ? articleList[parseInt(sel, 10)] : null;
     currentArticleId = art ? (art.id || "") : "";
     isRepeatMode = false;
     repeatModeIds = [];
+    repeatModeSourceSection = null;
     fullSentences = [];
     fullSectionIndex = [];
     document.getElementById("exitRepeatBtn").style.display = "none";
@@ -1268,6 +1384,7 @@
       currentArticleId = "";
       isRepeatMode = false;
       repeatModeIds = [];
+      repeatModeSourceSection = null;
       fullSentences = [];
       fullSectionIndex = [];
       document.getElementById("exitRepeatBtn").style.display = "none";
@@ -1349,6 +1466,74 @@
     overlay.onclick = (e) => { if (e.target === overlay) closeHelp(); };
   })();
 
+  (function() {
+    const secOverlay = document.getElementById("sectionCompleteOverlay");
+    const secClose = document.getElementById("sectionCompleteClose");
+    const secRetry = document.getElementById("sectionCompleteRetry");
+    const secNext = document.getElementById("sectionCompleteNext");
+    function closeSectionComplete(andAdvance) {
+      secOverlay.classList.remove("open");
+      lastSectionCompleteSec = null;
+      if (andAdvance && typeof window._advanceToNextAndRender === "function") {
+        window._advanceToNextAndRender();
+        window._advanceToNextAndRender = null;
+      }
+    }
+    if (secClose) secClose.onclick = function() { closeSectionComplete(true); };
+    if (secRetry) secRetry.onclick = function() {
+      if (lastSectionCompleteSec == null || !sentences.length) { closeSectionComplete(false); return; }
+      const sec = lastSectionCompleteSec;
+      const sectionIds = [];
+      for (let i = 0; i < sectionIndex.length; i++) {
+        if (sectionIndex[i] === sec) sectionIds.push(toSentenceId(currentArticleId, i));
+      }
+      closeSectionComplete(false);
+      if (sectionIds.length > 0) { enterRepeatMode(sectionIds, sec); renderSidebar(); }
+    };
+    const secRetryLow = document.getElementById("sectionCompleteRetryLow");
+    if (secRetryLow) secRetryLow.onclick = function() {
+      if (lastSectionCompleteSec == null || !sentences.length) { closeSectionComplete(false); return; }
+      const sec = lastSectionCompleteSec;
+      const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+      const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === sec);
+      const bySentence = {};
+      secHistory.forEach(h => {
+        const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+        if (sid && parseIndexFromId(sid) >= 0) bySentence[sid] = h;
+      });
+      const sectionIds = Object.keys(bySentence).filter(sid => (bySentence[sid].accPct || 0) < th).sort((a, b) => parseIndexFromId(a) - parseIndexFromId(b));
+      closeSectionComplete(false);
+      if (sectionIds.length > 0) { enterRepeatMode(sectionIds, sec); renderSidebar(); }
+    };
+    if (secNext) secNext.onclick = function() {
+      if (lastSectionCompleteSec == null) { closeSectionComplete(false); return; }
+      if (lastSectionCompleteSec === -1) {
+        closeSectionComplete(false);
+        exitRepeatMode();
+        return;
+      }
+      const nextSec = lastSectionCompleteSec + 1;
+      const firstIdx = sectionIndex.indexOf(nextSec);
+      closeSectionComplete(false);
+      if (firstIdx >= 0) {
+        idx = firstIdx;
+        saveSentenceIndex();
+        document.getElementById("result").style.display = "none";
+        document.getElementById("input").value = "";
+        var sel = document.getElementById("sectionSelect");
+        if (sel && sel.options.length > 1) { sel.value = String(nextSec); localStorage.setItem("dictationTrainer_section", String(nextSec)); }
+        renderSentence();
+        renderSidebar();
+        var panel = document.getElementById("chapterTextBox");
+        if (panel && panel.style.display === "block") {
+          var chapterSentences = sentences.filter(function(_, i) { return sectionIndex[i] === nextSec; });
+          panel.textContent = chapterSentences.join(" ");
+        }
+      }
+    };
+    secOverlay.onclick = (e) => { if (e.target === secOverlay) closeSectionComplete(true); };
+  })();
+
   document.getElementById("clearContent").onclick = () => {
     document.getElementById("article").value = "";
     sentences.length = 0;
@@ -1357,6 +1542,7 @@
     idx = 0;
     isRepeatMode = false;
     repeatModeIds = [];
+    repeatModeSourceSection = null;
     fullSentences = [];
     fullSectionIndex = [];
     document.getElementById("exitRepeatBtn").style.display = "none";
@@ -1399,6 +1585,7 @@
   document.getElementById("prev").onclick = () => {
     if (!sentences.length) return;
     idx = Math.max(0, idx-1);
+    saveSentenceIndex();
     playReplayCountForCurrentSentence = 0;
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
@@ -1408,6 +1595,7 @@
   document.getElementById("next").onclick = () => {
     if (!sentences.length) return;
     idx = Math.min(sentences.length-1, idx+1);
+    saveSentenceIndex();
     playReplayCountForCurrentSentence = 0;
     document.getElementById("result").style.display = "none";
     document.getElementById("input").value = "";
@@ -1428,7 +1616,8 @@
 
   // Playback hotkeys (work while typing in textarea)
   document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.key === "Enter") { e.preventDefault(); document.getElementById("check").click(); return; }
+    if ((e.altKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); document.getElementById("check").click(); return; }
+    if (e.key === "Tab") { e.preventDefault(); var s = currentSentence(); if (s) { playReplayCountForCurrentSentence++; speak(s); } return; }
     if (!e.altKey) return;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); playAgain(); return; }
     if (e.key === "p" || e.key === "P") { e.preventDefault(); var s = currentSentence(); if (s) { playReplayCountForCurrentSentence++; speak(s); } return; }
@@ -1564,7 +1753,7 @@
     if (insWords.length > 0) tips.push("Extra: " + insWords.join(", ") + "—slow down and follow the sentence.");
     if (subs.length > 0) {
       const subList = subs.map(s => s.ref + "→" + s.user).join(", ");
-      tips.push("Wrong: " + subList + " (check spelling or 連音/pronunciation).");
+      tips.push("Wrong: " + subList + " (check spelling or pronunciation).");
     }
     if (tips.length === 0) tips.push("Great accuracy—try Fast mode next.");
     const tipText = tips.join(" ");
@@ -1572,7 +1761,9 @@
     const sentenceId = isRepeatMode ? repeatModeIds[idx] : toSentenceId(currentArticleId, idx);
     const recordSentenceNum = isRepeatMode ? (parseIndexFromId(sentenceId) + 1) : (idx + 1);
     const recordTotalSentences = isRepeatMode ? fullSentences.length : sentences.length;
-    const secIdx = sectionIndex[idx];
+    const secIdx = isRepeatMode && fullSectionIndex.length
+      ? (fullSectionIndex[parseIndexFromId(sentenceId)] ?? 0)
+      : (sectionIndex[idx] !== undefined ? sectionIndex[idx] : 0);
     checkHistory.push({
       sentenceNum: recordSentenceNum,
       totalSentences: recordTotalSentences,
@@ -1613,15 +1804,17 @@
     lastResultIndex = idx;
     const res = document.getElementById("result");
     res.style.display = "block";
+    const threshold = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+    const accColor = accPct < threshold ? "#dc2626" : "#2563eb";
     res.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
         <h4 style="margin:0;">Result</h4>
         <div style="display:flex; gap:8px;">
-          <button type="button" id="resultAddRepeat">➕ 加入重複練習</button>
+          <button type="button" id="resultAddRepeat">➕ Add to re-practice</button>
           <button type="button" id="resultReplay">🔊 Replay sentence</button>
         </div>
       </div>
-      <div><b>Accuracy:</b> ${accPct}%</div>
+      <div><b>Accuracy:</b> <span style="font-size:1.6em; font-weight:700; color:${accColor};">${accPct}%</span></div>
       <div class="muted">Blue = missing, Red = extra, Yellow = substitution</div>
       <div class="diff" style="margin-top:10px; line-height:1.8;">${diffHtml}</div>
       <div style="margin-top:10px;"><b>Tip:</b> ${tipText}</div>
@@ -1636,11 +1829,108 @@
       renderRepeatList();
     };
 
-    // 進入下一句並清空打字區（結果卡維持顯示可查看）
-    idx = Math.min(sentences.length - 1, idx + 1);
-    document.getElementById("input").value = "";
-    renderSentence();
-    updateDictationControls();
+    // 章節結束或 re-practice 結束時顯示成績（可選）
+    let didShowSectionReport = false;
+    if (isRepeatMode && repeatModeIds.length > 0 && idx === repeatModeIds.length - 1) {
+      const showReport = document.getElementById("showSectionReport").checked;
+      if (showReport) {
+        const idSet = new Set(repeatModeIds);
+        const repracticeHistory = checkHistory.filter(h => {
+          const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : null);
+          return sid && idSet.has(sid);
+        });
+        const reversed = repracticeHistory.slice().reverse();
+        const seen = new Set();
+        const deduped = reversed.filter(h => {
+          const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + (h.sentenceNum || 0));
+          if (seen.has(sid)) return false;
+          seen.add(sid);
+          return true;
+        });
+        const count = deduped.length;
+        const avg = count ? Math.round(deduped.reduce((s, h) => s + h.accPct, 0) / count) : 0;
+        const totalInRep = repeatModeIds.length;
+        const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+        const lowCount = deduped.filter(h => (h.accPct || 0) < th).length;
+        document.getElementById("sectionCompleteTitle").textContent = "Re-practice complete";
+        document.getElementById("sectionCompleteStats").innerHTML = `
+          <div><strong>Checked:</strong> ${count} / ${totalInRep}</div>
+          <div><strong>Average accuracy:</strong> ${avg}%</div>
+          ${lowCount > 0 ? `<div style="color:#dc2626;"><strong>Needs practice:</strong> ${lowCount} sentence(s)</div>` : ""}
+        `;
+        var sentenceListEl = document.getElementById("sectionCompleteSentenceList");
+        if (sentenceListEl) sentenceListEl.innerHTML = "";
+        lastSectionCompleteSec = -1;
+        document.getElementById("sectionCompleteRetry").style.display = "none";
+        document.getElementById("sectionCompleteRetryLow").style.display = "none";
+        var nextBtn = document.getElementById("sectionCompleteNext");
+        if (nextBtn) { nextBtn.textContent = "Exit re-practice"; nextBtn.style.display = ""; }
+        document.getElementById("sectionCompleteOverlay").classList.add("open");
+        didShowSectionReport = true;
+      }
+    } else if (!isRepeatMode && secIdx !== undefined && sectionIndex.length) {
+      const secIndices = sectionIndex.map((s, i) => s === secIdx ? i : -1).filter(i => i >= 0);
+      const lastIdxInSec = secIndices.length > 0 ? Math.max(...secIndices) : -1;
+      if (idx === lastIdxInSec) {
+        const showReport = document.getElementById("showSectionReport").checked;
+        if (showReport) {
+        const secHistory = checkHistory.filter(h => (h.sectionIndex ?? 0) === secIdx);
+        const reversed = secHistory.slice().reverse();
+        const seen = new Set();
+        const deduped = reversed.filter(h => {
+          const sid = h.sentenceId || (currentArticleId ? toSentenceId(currentArticleId, (h.sentenceNum || 1) - 1) : "n" + h.sentenceNum);
+          if (seen.has(sid)) return false;
+          seen.add(sid);
+          return true;
+        });
+        const count = deduped.length;
+        const avg = count ? Math.round(deduped.reduce((s, h) => s + h.accPct, 0) / count) : 0;
+        const totalInSec = sectionIndex.filter(s => s === secIdx).length;
+        const th = Math.min(100, Math.max(0, parseInt(document.getElementById("lowAccuracyThreshold").value, 10) || 60));
+        const lowCount = deduped.filter(h => (h.accPct || 0) < th).length;
+        document.getElementById("sectionCompleteTitle").textContent = "Section " + (secIdx + 1) + " complete";
+        document.getElementById("sectionCompleteStats").innerHTML = `
+          <div><strong>Checked:</strong> ${count} / ${totalInSec}</div>
+          <div><strong>Average accuracy:</strong> ${avg}%</div>
+          ${lowCount > 0 ? `<div style="color:#dc2626;"><strong>Needs practice:</strong> ${lowCount} sentence(s)</div>` : ""}
+        `;
+        var sentenceListEl = document.getElementById("sectionCompleteSentenceList");
+        if (sentenceListEl && typeof ProgressPanel !== "undefined" && ProgressPanel.renderSentenceListToContainer) {
+          ProgressPanel.renderSentenceListToContainer(sentenceListEl, secIdx);
+        }
+        lastSectionCompleteSec = secIdx;
+        var hasNextSec = sectionIndex.indexOf(secIdx + 1) >= 0;
+        var nextBtn = document.getElementById("sectionCompleteNext");
+        if (nextBtn) { nextBtn.textContent = "Go to next section"; nextBtn.style.display = hasNextSec ? "" : "none"; }
+        var retryLowBtn = document.getElementById("sectionCompleteRetryLow");
+        if (retryLowBtn) retryLowBtn.style.display = lowCount > 0 ? "" : "none";
+        document.getElementById("sectionCompleteRetry").style.display = "";
+        document.getElementById("sectionCompleteOverlay").classList.add("open");
+        didShowSectionReport = true;
+        } else {
+          // 不顯示成績單，直接到下一個章節（後續 idx 更新會自動處理）
+        }
+      }
+    }
+
+    function advanceToNextAndRender() {
+      idx = Math.min(sentences.length - 1, idx + 1);
+      saveSentenceIndex();
+      document.getElementById("input").value = "";
+      renderSentence();
+      updateDictationControls();
+      renderSidebar();
+    }
+
+    if (!didShowSectionReport) {
+      if (isRepeatMode && repeatModeIds.length > 0 && idx === repeatModeIds.length - 1) {
+        exitRepeatMode();
+      } else {
+        advanceToNextAndRender();
+      }
+    } else {
+      window._advanceToNextAndRender = lastSectionCompleteSec === -1 ? exitRepeatMode : advanceToNextAndRender;
+    }
   };
 
   // 「2) Paste or load article」區塊收合（點標題展開/收合），狀態存 localStorage
@@ -1673,6 +1963,26 @@
     localStorage.setItem(lowThresholdKey, String(n));
     renderSidebar();
   });
+
+  const showSectionReportKey = "dictationTrainer_showSectionReport";
+  const showSectionReportEl = document.getElementById("showSectionReport");
+  if (showSectionReportEl) {
+    var savedShow = localStorage.getItem(showSectionReportKey);
+    if (savedShow === "0") showSectionReportEl.checked = false;
+    showSectionReportEl.addEventListener("change", function() {
+      localStorage.setItem(showSectionReportKey, this.checked ? "1" : "0");
+    });
+  }
+
+  const playSectionVoiceKey = "dictationTrainer_playSectionVoice";
+  const playSectionVoiceEl = document.getElementById("playSectionVoice");
+  if (playSectionVoiceEl) {
+    var savedVoice = localStorage.getItem(playSectionVoiceKey);
+    if (savedVoice === "0") playSectionVoiceEl.checked = false;
+    playSectionVoiceEl.addEventListener("change", function() {
+      localStorage.setItem(playSectionVoiceKey, this.checked ? "1" : "0");
+    });
+  }
 
   // initial
   loadVoices();

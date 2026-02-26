@@ -531,7 +531,7 @@
         var level = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
         cell.classList.add("heatmap-l" + level);
         var tip = dateStr + ": " + count + " check" + (count === 1 ? "" : "s");
-        if (wordCount > 0) tip += ", 聽打總字數 " + wordCount;
+        if (wordCount > 0) tip += ", total words: " + wordCount;
         cell.title = tip;
         rowEl.appendChild(cell);
       }
@@ -698,7 +698,7 @@
         var row = document.createElement("div");
         row.className = "progress-panel-sentence-row";
         var label = "#" + item.posInSection + "/" + item.totalInSection;
-        var countStr = (item.practiceCount || 0) > 0 ? " (練 " + item.practiceCount + " 次)" : "";
+        var countStr = (item.practiceCount || 0) > 0 ? " (" + item.practiceCount + "x)" : "";
         var prevStr = item.prev !== null ? item.prev + "%" : "—";
         var currStr = item.curr !== null ? item.curr + "%" : "—";
         var text = label + countStr + ": " + prevStr + " → " + currStr;
@@ -726,6 +726,13 @@
     }
     wrap.appendChild(list);
     panelEl.appendChild(wrap);
+  }
+
+  function renderSentenceListToContainer(containerEl, sec, clearFirst) {
+    if (!containerEl) return;
+    if (clearFirst !== false) containerEl.innerHTML = "";
+    var improvements = getSentenceImprovements(sec);
+    renderSentenceList(containerEl, improvements);
   }
 
   function renderAISummary(panelEl, ai) {
@@ -765,9 +772,9 @@
     var wordWall = getWordWallData(sec);
     renderWordWall(panelEl, wordWall);
 
-    var improvements = getSentenceImprovements(sec);
-    renderSentenceList(panelEl, improvements);
+    renderSentenceListToContainer(panelEl, sec, false);
 
+    var improvements = getSentenceImprovements(sec);
     var ai = generateAISummary(sec, sectionScores, improvements, wordWall);
     renderAISummary(panelEl, ai);
   }
@@ -804,6 +811,7 @@
     render: renderSectionProgressPanel,
     toggle: toggleProgressPanel,
     bindProgressButtons: bindProgressButtons,
-    setExpandSection: setExpandSection
+    setExpandSection: setExpandSection,
+    renderSentenceListToContainer: renderSentenceListToContainer
   };
 })();
